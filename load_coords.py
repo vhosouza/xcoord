@@ -1,14 +1,24 @@
 # %%
 #Loading the coil coordinates from NBS eXimia session file
 import re
+import os
+from itertools import zip_longest
 
 # %%
-filename = 's01_eximia_coords.txt'
+data_dir = os.environ['OneDriveConsumer']
+
+
+filename = data_dir + '\\data\\nexstim_coord\\s01_eximia_coords.txt'
 with open(filename, 'r') as f:
     x = f.readlines()
 
-print(x)
+x = [e for e in x if e != '\n']
+x = [e.replace('\n', '') for e in x]
+x = [e[1:] if e[0] == '\t' else e for e in x ]
 
+# print(x)
+for line in x:
+    print(line.encode('unicode_escape'))
 subj = x[1]
 
 # %%
@@ -71,20 +81,62 @@ for pattern in patterns:
 pattern = 'Time'
 # data = [[] for id_l in range(6)]
 data = []
+data_csv = []
 id_fid = 0
 # print('%s' % pattern, end=' ')
 id_line = 0
 for s in x:
     seq_found = re.search(pattern, s)
     if seq_found:
-        for id_l in range(6):
-            data.append(x[id_fid + id_l].split('\t'))
+        for id_l in range(5):
+            data_line = x[id_fid + id_l].replace('\n', '')
+            data.append(data_line.split('\t'))
+            print(data_line.split('\t'))
+            data_csv.append(x[id_fid + id_l].replace('\t', 'NA'))
         break
     id_fid += 1
 
 print(data)
 # print(x[id_fid])
 data_new = data.copy()
+
+# %%
+pattern = 'Time'
+for n, s in enumerate(x):
+    seq_found = re.search(pattern, s)
+    if seq_found:
+        final = [z.split('\t') for z in x[n:]]
+        stim_info = [t for t in zip_longest(*final)]
+        break
+
+# %%
+pattern = 'Landmarks'
+for n, s in enumerate(x):
+    seq_found = re.search(pattern, s)
+    if seq_found:
+        final = [z.split('\t') for z in x[n+1:n+8]]
+        fids = [t for t in zip_longest(*final)]
+        break
+
+# %%
+
+reorder = [3, 0, 1, 2]
+fids = [fids[s] for s in reorder]
+
+# %%
+# labels = [fids[-1][0], fids[0][0], fids[1][0], fids[2][0]]
+fids_mri = [[] for id_l in range(len(fids[0]))]
+for s in fids:
+    for n, l in enumerate(s):
+        fids_mri[n].append(l)
+
+# %%
+# fids_mri = [s for n in s for s in fids]
+
+# for n in range(4):
+#     fids_mri[n] = [fids[-1][n], fids[0][n], fids[1][n], fids[2][n]]
+
+
 
 # %%
 
@@ -96,21 +148,28 @@ max_len = max(a)
 for n, im in enumerate(data):
     if len(im) < max_len:
         # data_extra = ['' for id_l in range(max_len - len(im))]
-        data_new[n].extend([' ' for id_l in range(max_len - len(im))])
+        data_new[n].extend(['NA' for id_l in range(max_len - len(im))])
 
 for n, i in enumerate(a):
     if i == 1:
         a[n] = 10
 
+data_new2 = data_new.copy()
+for n, im in enumerate(data_new2):
+    for k, txt in enumerate(im):
+        data_new2[n][k].replace('\t', 'NA')
+
 data_conv = []
 for id_t in range(max_len):
     # data_conv.append(data_new[0][id_t] + data_new[1][id_t] + data_new[2][id_t] + data_new[3][id_t] + data_new[4][id_t] + data_new[5][id_t])
-    print(data_new[0][id_t] + ' ' + data_new[1][id_t] + ' ' + data_new[2][id_t] + ' ' + data_new[3][id_t] + ' ' + data_new[4][id_t] + ' ' + data_new[5][id_t])
+    line = data_new[0][id_t] + ' ' + data_new[1][id_t] + ' ' + data_new[2][id_t] + ' ' + data_new[3][id_t] + ' ' + data_new[4][id_t] + ' ' + data_new[5][id_t]
+    print(line.encode('unicode_escape'))
     # print('%s %s %s %s %s' % (data_new[0][id_t], data_new[1][id_t], data_new[2][id_t], data_new[3][id_t], data_new[4][id_t], data_new[5][id_t]))
     # print('{} "" {} "" {} "" {} "" {}'.format(data_new[0][id_t], data_new[1][id_t], data_new[2][id_t], data_new[3][id_t], data_new[4][id_t], data_new[5][id_t]))
         # data_new[0][id_t] + data_new[1][id_t] + data_new[2][id_t] + data_new[3][id_t] + data_new[4][id_t] + data_new[5][
         #     id_t])
 
+# %%
 #
 #     seq_found = find_pattern(x, pattern)
 #     if seq_found:
