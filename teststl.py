@@ -164,6 +164,43 @@ def create_plane(coil_center, coil_dir, coil_normal):
     return actor
 
 
+def load_stl(stl_path):
+    reader = vtk.vtkSTLReader()
+    reader.SetFileName(coil_path)
+
+    print(stl_path)
+
+    transform = vtk.vtkTransform()
+    # transform.RotateZ(90)
+    transform.RotateZ(0)
+
+    transform_filt = vtk.vtkTransformPolyDataFilter()
+    transform_filt.SetTransform(transform)
+    transform_filt.SetInputData(reader.GetOutput())
+    transform_filt.Update()
+
+    normals = vtk.vtkPolyDataNormals()
+    # normals.SetInputData(transform_filt.GetOutput())
+    normals.SetInputData(reader.GetOutput())
+    normals.SetFeatureAngle(80)
+    normals.AutoOrientNormalsOn()
+    normals.Update()
+
+    obj_mapper = vtk.vtkPolyDataMapper()
+    obj_mapper.SetInputConnection(reader.GetOutputPort())
+    # obj_mapper.SetInputData(normals.GetOutput())
+    # obj_mapper.ScalarVisibilityOff()
+    # obj_mapper.ImmediateModeRenderingOn()  # improve performance
+
+    stl_actor = vtk.vtkActor()
+    stl_actor.SetMapper(obj_mapper)
+    # coil_actor.GetProperty().SetOpacity(0.9)
+    stl_actor.SetVisibility(1)
+    # coil_actor.SetUserMatrix(m_img_vtk)
+
+    return stl_actor
+
+
 def create_coil(coil_path, coil_center, coil_dir, coil_normal):
 
     reader = vtk.vtkSTLReader()
