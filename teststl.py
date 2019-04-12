@@ -15,6 +15,8 @@
 # Date/version: 10.4.2019
 
 import nibabel as nb
+from nibabel.affines import apply_affine
+import numpy as np
 import vtk
 import os
 
@@ -37,18 +39,25 @@ def main():
     imagedata.update_header()
     # hdr = imagedata.header
     img_shape = imagedata.header.get_data_shape()
+    affine = imagedata.affine
 
     # print(data_dir)
     # [print(s) for s in coords]
 
+    # brain_file = data_dir + "s01_skin_inv.stl"
     brain_file = data_dir + "s01_gm.stl"
-    skin_file = data_dir + "s01_skin.stl"
+    skin_file = data_dir + "s01_skin_inv_2.stl"
 
     reader = vtk.vtkSTLReader()
     reader.SetFileName(brain_file)
 
     reader2 = vtk.vtkSTLReader()
     reader2.SetFileName(skin_file)
+
+    reader.Update()
+    polydata = reader.GetOutput()
+
+    print('NUMBER OF POINTS: ', polydata.GetNumberOfPoints())
 
     mapper = vtk.vtkPolyDataMapper()
     mapper2 = vtk.vtkPolyDataMapper()
@@ -62,12 +71,12 @@ def main():
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
     actor.GetProperty().SetColor(0., 1., 1.)
-    actor.SetVisibility(0)
+    actor.SetVisibility(1)
 
     actor2 = vtk.vtkActor()
     actor2.SetMapper(mapper2)
-    actor2.GetProperty().SetOpacity(1.)
-    actor2.SetVisibility(0)
+    actor2.GetProperty().SetOpacity(0.1)
+    actor2.SetVisibility(1)
 
     # Create a rendering window and renderer
     ren = vtk.vtkRenderer()
@@ -87,8 +96,25 @@ def main():
 
     for n, pts_id in enumerate(pts_ref):
         coord_aux = n2m.coord_change(img_shape, coords[pts_id][1:])
+        # coord_aux = coords[pts_id][1:]
+        # coord_aux = n2m.apply_affine2(affine, coord_aux)
+
+
+        # affine[:3, :3] = np.identity(3)
+        # print(affine)
+        # coord_aux = n2m.apply_affine2(affine, coords[pts_id][1:])
+
+        # apply the affine matrix from nifti image header
+        # this converts from mri to world (scanner) space
+        # https://nipy.org/nibabel/coordinate_systems.html#the-affine-matrix-as-a-transformation-between-spaces
+        # coord = np.asarray(coord_aux)[np.newaxis, :]
+        # coord_transf = apply_affine(affine, coord)
+        # coord_aux = coord_transf[0, :].tolist()
+
+        # coord_aux = n2m.coord_change(img_shape, coord_aux)
+
         [coord_mri[n].append(s) for s in coord_aux]
-        # act = add_marker(coords[n][1:], col[n-1])
+
         act = add_marker(coord_aux, col[n])
         ren.AddActor(act)
 
@@ -100,8 +126,8 @@ def main():
     coil_norm = coords[8][1:]
     coil_dir = coords[9][1:]
     # act_coil = create_plane(coil_loc, coil_dir, coil_norm)
-    act_coil = create_coil(coil_path, coil_loc, coil_dir, coil_norm)
-    ren.AddActor(act_coil)
+    # act_coil = create_coil(coil_path, coil_loc, coil_dir, coil_norm)
+    # ren.AddActor(act_coil)
 
     axes = vtk.vtkAxesActor()
 
