@@ -32,7 +32,8 @@ def main():
     coil_path = data_dir + 'magstim_fig8_coil.stl'
 
     coords = lc.load_nexstim(filename_coord)
-    col = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1., 1., 0.]]
+    # red, gree, blue, maroon (dark red), olive (shitty green), teal (petrol blue), yellow, orange
+    col = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [.5, .0, 0.], [.5, .5, 0.], [0., .5, .5], [1., 1., 0.], [1., .4, .0]]
 
     imagedata = nb.squeeze_image(nb.load(img_path))
     imagedata = nb.as_closest_canonical(imagedata)
@@ -45,38 +46,39 @@ def main():
     # [print(s) for s in coords]
 
     # brain_file = data_dir + "s01_skin_inv.stl"
-    brain_file = data_dir + "s01_gm.stl"
-    skin_file = data_dir + "s01_skin_inv_2.stl"
+    brain_file = data_dir + "s01_gm_nc.stl"
+    skin_file = data_dir + "s01_skin_nc.stl"
 
-    reader = vtk.vtkSTLReader()
-    reader.SetFileName(brain_file)
+    brain = vtk.vtkSTLReader()
+    brain.SetFileName(brain_file)
 
-    reader2 = vtk.vtkSTLReader()
-    reader2.SetFileName(skin_file)
+    skin = vtk.vtkSTLReader()
+    skin.SetFileName(skin_file)
 
-    reader.Update()
-    polydata = reader.GetOutput()
+    # brain.Update()
+    # polydata = brain.GetOutput()
+    #
+    # print('NUMBER OF POINTS: ', polydata.GetNumberOfPoints())
 
-    print('NUMBER OF POINTS: ', polydata.GetNumberOfPoints())
-
-    mapper = vtk.vtkPolyDataMapper()
-    mapper2 = vtk.vtkPolyDataMapper()
+    brain_mapper = vtk.vtkPolyDataMapper()
+    skin_mapper = vtk.vtkPolyDataMapper()
     if vtk.VTK_MAJOR_VERSION <= 5:
-        mapper.SetInput(reader.GetOutput())
-        mapper2.SetInput(reader2.GetOutput())
+        brain_mapper.SetInput(brain.GetOutput())
+        skin_mapper.SetInput(skin.GetOutput())
     else:
-        mapper.SetInputConnection(reader.GetOutputPort())
-        mapper2.SetInputConnection(reader2.GetOutputPort())
+        brain_mapper.SetInputConnection(brain.GetOutputPort())
+        skin_mapper.SetInputConnection(skin.GetOutputPort())
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(0., 1., 1.)
-    actor.SetVisibility(1)
+    brain_actor = vtk.vtkActor()
+    brain_actor.SetMapper(brain_mapper)
+    brain_actor.GetProperty().SetColor(0., 1., 1.)
+    brain_actor.GetProperty().SetOpacity(0.5)
+    brain_actor.SetVisibility(1)
 
-    actor2 = vtk.vtkActor()
-    actor2.SetMapper(mapper2)
-    actor2.GetProperty().SetOpacity(0.1)
-    actor2.SetVisibility(1)
+    skin_actor = vtk.vtkActor()
+    skin_actor.SetMapper(skin_mapper)
+    skin_actor.GetProperty().SetOpacity(.7)
+    skin_actor.SetVisibility(1)
 
     # Create a rendering window and renderer
     ren = vtk.vtkRenderer()
@@ -88,11 +90,19 @@ def main():
     iren.SetRenderWindow(renWin)
 
     # Assign actor to the renderer
-    ren.AddActor(actor)
-    ren.AddActor(actor2)
+    ren.AddActor(brain_actor)
+    ren.AddActor(skin_actor)
 
-    coord_mri = [['Nose/Nasion'], ['Left ear'], ['Right ear'], ['Coil Loc']]
-    pts_ref = [1, 2, 3, 7]
+    # MRI landmarks
+    # coord_mri = [['Nose/Nasion'], ['Left ear'], ['Right ear'], ['Coil Loc'], ['EF max']]
+    # pts_ref = [1, 2, 3, 7, 10]
+    # all coords
+    # coord_mri = [['Nose/Nasion'], ['Left ear'], ['Right ear'], ['Nose/Nasion'], ['Left ear'], ['Right ear'],
+    #              ['Coil Loc'], ['EF max']]
+    # pts_ref = [1, 2, 3, 5, 4, 6, 7, 10]
+    # scalp landmarkds
+    coord_mri = [['Nose/Nasion'], ['Left ear'], ['Right ear'], ['Coil Loc'], ['EF max']]
+    pts_ref = [5, 4, 6, 7, 10]
 
     for n, pts_id in enumerate(pts_ref):
         coord_aux = n2m.coord_change(img_shape, coords[pts_id][1:])
@@ -107,9 +117,9 @@ def main():
         # apply the affine matrix from nifti image header
         # this converts from mri to world (scanner) space
         # https://nipy.org/nibabel/coordinate_systems.html#the-affine-matrix-as-a-transformation-between-spaces
-        # coord = np.asarray(coord_aux)[np.newaxis, :]
-        # coord_transf = apply_affine(affine, coord)
-        # coord_aux = coord_transf[0, :].tolist()
+        coord = np.asarray(coord_aux)[np.newaxis, :]
+        coord_transf = apply_affine(affine, coord)
+        coord_aux = coord_transf[0, :].tolist()
 
         # coord_aux = n2m.coord_change(img_shape, coord_aux)
 
