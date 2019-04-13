@@ -138,7 +138,6 @@ def main():
     coil_dir = n2m.coord_change(coords[9][1:], img_shape, affine, flipx, reorder)
     coil_dir = coords[9][1:]
 
-
     # act_coil = create_plane(coil_loc, coil_dir, coil_norm)
     # act_coil = create_coil(coil_path, coil_loc, coil_dir, coil_norm)
     # ren.AddActor(act_coil)
