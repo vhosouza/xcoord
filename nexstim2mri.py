@@ -15,35 +15,31 @@
 # Date/version: 10.4.2019
 
 import numpy as np
-from nibabel.affines import apply_affine
+
+# Transformation to correct place required a surface with no coordinate change from simnibs
+# Transformations from nexstim to mri space is: swap y and z coords, flip x coord, then apply affine from image header
 
 
-def coord_change(img_shape, coord):
+def coord_change(coord, img_shape, affine=np.identity(4), flipxyz=[False, False, False], axis_order=[0, 1, 2]):
+    flipx, flipy, flipz = flipxyz
 
-    reorder = [0, 2, 1]
-    coord = [coord[s] for s in reorder]
+    # swap axis
+    coord = [coord[s] for s in axis_order]
     data_flip = coord.copy()
-    data_flip[0] = img_shape[0] - coord[0]
-    # data_flip[1] = img_shape[1] - coord[1]
-    # data_flip[1] = - coord[1]
 
-    return data_flip
+    # flip axis
+    if flipx:
+        data_flip[0] = img_shape[0] - coord[0]
+    if flipy:
+        data_flip[1] = img_shape[1] - coord[1]
+    if flipz:
+        data_flip[2] = img_shape[2] - coord[2]
 
+    # apply the affine matrix from nifti image header
+    # this converts from mri to world (scanner) space
+    # https://nipy.org/nibabel/coordinate_systems.html#the-affine-matrix-as-a-transformation-between-spaces
+    M = affine[:3, :3]
+    abc = affine[:3, 3]
+    coord_transf = M.dot(data_flip) + abc
 
-def apply_affine2(affine, coord):
-
-    # print(np.dot(affine, np.transpose(coord)))
-    # coord.append(1.)
-    coord = np.asarray(coord)[np.newaxis, :]
-
-    # coord_transf = np.dot(affine[:3, :3], coord) + affine[:3, 3]
-    # coord_transf = affine[:3, :3]@np.transpose(coord) + affine[:3, 3]
-
-    # np.fill_diagonal(affine, 1.)
-    # coord_transf = affine @ coord
-    coord_transf = apply_affine(affine, coord)
-
-    print(affine)
-
-    return coord_transf[0, :].tolist()
-    # return coord_transf.reshape([1, 4])[0, :-1].tolist()
+    return coord_transf.tolist()

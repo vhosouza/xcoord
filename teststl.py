@@ -26,6 +26,14 @@ import nexstim2mri as n2m
 
 def main():
 
+    SHOW_AXES = True
+    SHOW_COIL = True
+    SHOW_SKIN = False
+    SHOW_BRAIN = True
+
+    reorder = [0, 2, 1]
+    flipx = [True, False, False]
+
     data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
     filename_coord = data_dir + 's01_eximia_coords.txt'
     img_path = data_dir + 'ppM1_S1.nii'
@@ -72,13 +80,19 @@ def main():
     brain_actor = vtk.vtkActor()
     brain_actor.SetMapper(brain_mapper)
     brain_actor.GetProperty().SetColor(0., 1., 1.)
-    brain_actor.GetProperty().SetOpacity(0.5)
-    brain_actor.SetVisibility(1)
+    brain_actor.GetProperty().SetOpacity(1.)
+    if SHOW_BRAIN:
+        brain_actor.SetVisibility(1)
+    else:
+        brain_actor.SetVisibility(0)
 
     skin_actor = vtk.vtkActor()
     skin_actor.SetMapper(skin_mapper)
     skin_actor.GetProperty().SetOpacity(.7)
-    skin_actor.SetVisibility(1)
+    if SHOW_SKIN:
+        skin_actor.SetVisibility(1)
+    else:
+        skin_actor.SetVisibility(0)
 
     # Create a rendering window and renderer
     ren = vtk.vtkRenderer()
@@ -105,24 +119,7 @@ def main():
     pts_ref = [5, 4, 6, 7, 10]
 
     for n, pts_id in enumerate(pts_ref):
-        coord_aux = n2m.coord_change(img_shape, coords[pts_id][1:])
-        # coord_aux = coords[pts_id][1:]
-        # coord_aux = n2m.apply_affine2(affine, coord_aux)
-
-
-        # affine[:3, :3] = np.identity(3)
-        # print(affine)
-        # coord_aux = n2m.apply_affine2(affine, coords[pts_id][1:])
-
-        # apply the affine matrix from nifti image header
-        # this converts from mri to world (scanner) space
-        # https://nipy.org/nibabel/coordinate_systems.html#the-affine-matrix-as-a-transformation-between-spaces
-        coord = np.asarray(coord_aux)[np.newaxis, :]
-        coord_transf = apply_affine(affine, coord)
-        coord_aux = coord_transf[0, :].tolist()
-
-        # coord_aux = n2m.coord_change(img_shape, coord_aux)
-
+        coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine, flipx, reorder)
         [coord_mri[n].append(s) for s in coord_aux]
 
         act = add_marker(coord_aux, col[n])
@@ -132,9 +129,16 @@ def main():
     print('coords_mri:\n', coord_mri)
 
     # coil_loc_mri = n2m.coord_change(img_shape, coords[7][1:])
-    coil_loc = coord_mri[-1][1:]
+    # coil_loc = n2m.coord_change(coords[7][1:], img_shape, affine, flipx, reorder)
+    coil_loc = coord_mri[-2][1:]
+
+    coil_norm = n2m.coord_change(coords[8][1:], img_shape, affine, flipx, reorder)
     coil_norm = coords[8][1:]
+
+    coil_dir = n2m.coord_change(coords[9][1:], img_shape, affine, flipx, reorder)
     coil_dir = coords[9][1:]
+
+
     # act_coil = create_plane(coil_loc, coil_dir, coil_norm)
     # act_coil = create_coil(coil_path, coil_loc, coil_dir, coil_norm)
     # ren.AddActor(act_coil)
@@ -148,6 +152,24 @@ def main():
     # widget.SetViewport(0.0, 0.0, 0.4, 0.4)
     widget.SetEnabled(1)
     widget.InteractiveOn()
+
+    if SHOW_AXES:
+        add_line(ren, [0, 0, 0], [150, 0, 0], color=[1.0, 0.0, 0.0])
+        add_line(ren, [0, 0, 0], [0, 150, 0], color=[0.0, 1.0, 0.0])
+        add_line(ren, [0, 0, 0], [0, 0, 150], color=[0.0, 0.0, 1.0])
+
+    if SHOW_COIL:
+        p1 = coords[7][1:]
+        p2 = [x + 50*y for x, y in zip(p1, coil_norm)]
+        p2_norm = n2m.coord_change(p2, img_shape, affine, flipx, reorder)
+        add_line(ren, coil_loc, p2_norm, color=[.0, 1.0, 0.0])
+        p2 = [x + 50*y for x, y in zip(p1, coil_dir)]
+        p2_dir = n2m.coord_change(p2, img_shape, affine, flipx, reorder)
+        add_line(ren, coil_loc, p2_dir, color=[1.0, .0, .0])
+        coil_face = np.cross(coil_dir, coil_norm)
+        p2 = [x + 50 * y for x, y in zip(p1, coil_face.tolist())]
+        p2_face = n2m.coord_change(p2, img_shape, affine, flipx, reorder)
+        add_line(ren, coil_loc, p2_face, color=[.0, .0, 1.0])
 
     # Enable user interface interactor
     iren.Initialize()
@@ -202,7 +224,7 @@ def create_plane(coil_center, coil_dir, coil_normal):
 
 def load_stl(stl_path):
     reader = vtk.vtkSTLReader()
-    reader.SetFileName(coil_path)
+    reader.SetFileName(stl_path)
 
     print(stl_path)
 
@@ -273,6 +295,21 @@ def create_coil(coil_path, coil_center, coil_dir, coil_normal):
     # coil_actor.SetUserMatrix(m_img_vtk)
 
     return coil_actor
+
+
+def add_line(renderer, p1, p2, color=[0.0, 0.0, 1.0]):
+    line = vtk.vtkLineSource()
+    line.SetPoint1(p1)
+    line.SetPoint2(p2)
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(line.GetOutputPort())
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color)
+
+    renderer.AddActor(actor)
 
 
 if __name__ == "__main__":
