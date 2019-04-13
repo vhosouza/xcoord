@@ -3,6 +3,7 @@
 import re
 import os
 from itertools import zip_longest
+import vtk
 
 # %%
 data_dir = os.environ['OneDriveConsumer']
@@ -197,3 +198,41 @@ for id_t in range(max_len):
 # tab1 = '\t\t\tTime\tStim.\tInter\tFirst\tSecond\tTarget\tRep.\tPeeling\tUser\tCoil\t\t\tCoil\t\t\tCoil\t\t\tEF max.\t\t\tEF max.\tEF at \tCh1 \tCh1 \tCh2 \tCh2 \tCh3 \tCh3 \tCh4 \tCh4 \tCh5 \tCh5 \tCh6 \tCh6\n'
 # tab2 = '\t\tID\t(ms)\tType\tpulse\tIntens.\tIntens.\tID\tStim.\tDepth\tResp.\tLoc.\t\t\tNormal\t\t\tDir.\t\t\tLoc.\t\t\tValue\tTarget\tAmp. \tLat. \tAmp. \tLat. \tAmp. \tLat. \tAmp. \tLat. \tAmp. \tLat. \tAmp. \tLat.\n'
 # tab3 = '\t\t\t\t\tInt.\t(%)\t(%)\t\tID\t(%)\t\tx\ty\tz\tx\ty\tz\tx\ty\tz\tx\ty\tz\t(V/m)\t(V/m)\t(ÂµV)\t(ms)\t(ÂµV)\t(ms)\t(ÂµV)\t(ms)\t(ÂµV)\t(ms)\t(ÂµV)\t(ms)\t(ÂµV)\t(ms)\n'
+
+# %%
+
+def load_stl(stl_path):
+    reader = vtk.vtkSTLReader()
+    reader.SetFileName(stl_path)
+
+    print(stl_path)
+
+    transform = vtk.vtkTransform()
+    # transform.RotateZ(90)
+    transform.RotateZ(0)
+
+    transform_filt = vtk.vtkTransformPolyDataFilter()
+    transform_filt.SetTransform(transform)
+    transform_filt.SetInputData(reader.GetOutput())
+    transform_filt.Update()
+
+    normals = vtk.vtkPolyDataNormals()
+    # normals.SetInputData(transform_filt.GetOutput())
+    normals.SetInputData(reader.GetOutput())
+    normals.SetFeatureAngle(80)
+    normals.AutoOrientNormalsOn()
+    normals.Update()
+
+    obj_mapper = vtk.vtkPolyDataMapper()
+    obj_mapper.SetInputConnection(reader.GetOutputPort())
+    # obj_mapper.SetInputData(normals.GetOutput())
+    # obj_mapper.ScalarVisibilityOff()
+    # obj_mapper.ImmediateModeRenderingOn()  # improve performance
+
+    stl_actor = vtk.vtkActor()
+    stl_actor.SetMapper(obj_mapper)
+    # coil_actor.GetProperty().SetOpacity(0.9)
+    stl_actor.SetVisibility(1)
+    # coil_actor.SetUserMatrix(m_img_vtk)
+
+    return stl_actor
