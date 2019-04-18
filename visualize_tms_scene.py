@@ -30,31 +30,50 @@ def main():
 
     SHOW_AXES = True
     SHOW_SCENE_AXES = True
-    SHOW_COIL_AXES = False
-    SHOW_SKIN = False
-    SHOW_BRAIN = False
+    SHOW_COIL_AXES = True
+    SHOW_SKIN = True
+    SHOW_BRAIN = True
     SHOW_COIL = True
-    SHOW_MARKERS = False
-    TRANSF_COIL = False
-    SHOW_PLANE = False
+    SHOW_MARKERS = True
+    TRANSF_COIL = True
+    SHOW_PLANE = True
     SELECT_LANDMARKS = 'scalp'  # 'all', 'mri' 'scalp'
     SAVE_ID = False
 
     reorder = [0, 2, 1]
     flipx = [True, False, False]
 
+    # reorder = [0, 1, 2]
+    # flipx = [False, False, False]
+
     # default folder and subject
-    subj = 's02'
-    data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
-    data_subj = data_dir + subj + '\\'
+    # subj = 's03'
+    subj = 'S5'
+    id_extra = False  # 8, 9, 10, 12, False
+    # data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
+    data_dir = 'P:\\tms_eeg\\mTMS\\projects\\lateral ppTMS M1\\E-fields\\'
+    # data_subj = data_dir + subj + '\\'
+    simnibs_dir = data_dir + 'simnibs\\m2m_ppM1_%s_nc\\' % subj
+    if id_extra:
+        nav_dir = data_dir + 'nav_coordinates\\ppM1_%s_%d\\' % (subj, id_extra)
+    else:
+        nav_dir = data_dir + 'nav_coordinates\\ppM1_%s\\' % subj
 
     # filenames
-    coil_file = data_dir + 'magstim_fig8_coil.stl'
-    coord_file = data_subj + subj + '_eximia_coords.txt'
-    img_file = data_subj + subj + '.nii'
-    brain_file = data_subj + subj + "_wm_nc.stl"
-    skin_file = data_subj + subj + "_skin_nc.stl"
-    output_file = data_subj + subj + '_transformation_matrix'
+    # coil_file = data_dir + 'magstim_fig8_coil.stl'
+    coil_file = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\magstim_fig8_coil.stl'
+    if id_extra:
+        coord_file = nav_dir + 'ppM1_eximia_%s_%d.txt' % (subj, id_extra)
+    else:
+        coord_file = nav_dir + 'ppM1_eximia_%s.txt' % subj
+    # img_file = data_subj + subj + '.nii'
+    img_file = data_dir + 'mri\\ppM1_%s\\ppM1_%s.nii' % (subj, subj)
+    brain_file = simnibs_dir + "wm.stl"
+    skin_file = simnibs_dir + "skin.stl"
+    if id_extra:
+        output_file = nav_dir + 'transf_mat_%s_%d' % (subj, id_extra)
+    else:
+        output_file = nav_dir + 'transf_mat_%s' % subj
 
     coords = lc.load_nexstim(coord_file)
     # red, green, blue, maroon (dark red),
@@ -68,6 +87,7 @@ def main():
     imagedata.update_header()
     img_shape = imagedata.header.get_data_shape()
     affine = imagedata.affine
+    affine_I = np.identity(4)
 
     # create a rendering window and renderer
     ren = vtk.vtkRenderer()
@@ -93,7 +113,7 @@ def main():
         pts_ref = [5, 4, 6, 7, 10]
 
     for n, pts_id in enumerate(pts_ref):
-        coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine, flipx, reorder)
+        coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine_I, flipx, reorder)
         [coord_mri[n].append(s) for s in coord_aux]
 
         if SHOW_MARKERS:
@@ -126,9 +146,9 @@ def main():
     p2_face = n2m.coord_change(p2, img_shape, affine, flipx, reorder)
 
     if SHOW_BRAIN:
-        brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.])
+        brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=0.7, user_matrix=np.linalg.inv(affine))
     if SHOW_SKIN:
-        skin_actor = load_stl(skin_file, ren, opacity=0.5)
+        skin_actor = load_stl(skin_file, ren, opacity=0.5, user_matrix=np.linalg.inv(affine))
 
     if SHOW_COIL:
         # Coil direction unit vector
