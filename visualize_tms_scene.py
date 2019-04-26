@@ -113,7 +113,11 @@ def main():
         pts_ref = [5, 4, 6, 7, 10]
 
     for n, pts_id in enumerate(pts_ref):
-        coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine_I, flipx, reorder)
+        # to keep in the MRI space use the identity as the affine
+        # coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine_I, flipx, reorder)
+        affine_trans = affine_I.copy()
+        affine_trans[:3, -1] = affine[:3, -1]
+        coord_aux = n2m.coord_change(coords[pts_id][1:], img_shape, affine_trans, flipx, reorder)
         [coord_mri[n].append(s) for s in coord_aux]
 
         if SHOW_MARKERS:
@@ -146,9 +150,11 @@ def main():
     p2_face = n2m.coord_change(p2, img_shape, affine, flipx, reorder)
 
     if SHOW_BRAIN:
-        brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=0.7, user_matrix=np.linalg.inv(affine))
+        # brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=0.7, user_matrix=np.linalg.inv(affine))
+        brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=0.7)
     if SHOW_SKIN:
-        skin_actor = load_stl(skin_file, ren, opacity=0.5, user_matrix=np.linalg.inv(affine))
+        # skin_actor = load_stl(skin_file, ren, opacity=0.5, user_matrix=np.linalg.inv(affine))
+        skin_actor = load_stl(skin_file, ren, opacity=0.5)
 
     if SHOW_COIL:
         # Coil direction unit vector

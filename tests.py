@@ -236,3 +236,16 @@ def load_stl(stl_path):
     # coil_actor.SetUserMatrix(m_img_vtk)
 
     return stl_actor
+
+# %%
+
+file_dir = r'P:\tms_eeg\mTMS\projects\lateral ppTMS M1\E-fields\simnibs\m2m_ppM1_S5_nc'
+file_name = file_dir + r'\T1fs_nu_conform.nii.gz'
+
+imagedata_2 = nb.as_closest_canonical(nb.squeeze_image(nb.load(file_name)))
+imagedata_2.update_header()
+img_shape_2 = imagedata_2.header.get_data_shape()
+affine_2 = imagedata_2.affine
+
+affine_res = affine - affine_2
+print(affine_res)
