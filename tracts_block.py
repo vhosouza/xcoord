@@ -4,6 +4,7 @@ import Trekker
 import vtk
 import numpy as np
 import multiprocessing as mp
+import threading
 from itertools import repeat
 
 
@@ -18,7 +19,9 @@ def find_sums(tracker_init, seed):
 
 
 # This function converts a single track to a vtkActor
-def trk2vtkActor(trk):
+def trk2vtkActor(tracker, seed, out_list):
+    tracker.set_seeds(seed)
+    trk = tracker.run()[0]
     # convert trk to vtkPolyData
     trk = np.transpose(np.asarray(trk))
     numberOfPoints = trk.shape[0]
@@ -56,15 +59,15 @@ def trk2vtkActor(trk):
     trkTube.SetInputData(trkData)
     trkTube.Update()
 
-    # mapper
-    trkMapper = vtk.vtkPolyDataMapper()
-    trkMapper.SetInputData(trkTube.GetOutput())
+    # # mapper
+    # trkMapper = vtk.vtkPolyDataMapper()
+    # trkMapper.SetInputData(trkTube.GetOutput())
+    #
+    # # actor
+    # trkActor = vtk.vtkActor()
+    # trkActor.SetMapper(trkMapper)
 
-    # actor
-    trkActor = vtk.vtkActor()
-    trkActor.SetMapper(trkMapper)
-
-    return trkActor
+    out_list.append(trkTube)
 
 
 def visualizeTracks(tracker, seed):
@@ -103,14 +106,59 @@ if __name__ == "__main__":
 
     # Show tracks
     # for i in range(5):
-    seed = [np.array([[-8.49, -8.39, 2.5]])]*5
-    tracker_list = [tracker for _ in range(5)]
-    find_sums(tracker_list, seed)
+    seed = np.array([[-8.49, -8.39, 2.5]])
+    # tracker_list = [tracker for _ in range(5)]
+
+    # tractogram = list()
+    # for i in range(5):
+    #     tracker.set_seeds(seed)
+    #     tractogram.append(tracker.run()[0])
+
+    # find_sums(tracker_list, seed)
+    procs = 5
+
+    jobs = []
+    out_list = list()
+    for i in range(procs):
+        # process = mp.Process(target=trk2vtkActor, args=(tractogram[i], out_list))
+        # process = threading.Thread(target=trk2vtkActor(tractogram[i], out_list))
+        process = threading.Thread(target=trk2vtkActor(tracker, seed, out_list))
+        # tracker.set_seeds(seed)
+        # process = mp.Process(target=trk2vtkActor, args=(tracker, seed, out_list))
+        jobs.append(process)
+
+    # Start the processes (i.e. calculate the random number lists)
+    for j in jobs:
+        j.start()
+
+    # Ensure all of the processes have finished
+    for j in jobs:
+        j.join()
 
     duration = time.time() - start_time
     print(f"Tract computing duration {duration} seconds")
 
     start_time = time.time()
+    root = vtk.vtkMultiBlockDataSet()
+    print("Tamanho lista: ", len(out_list))
+    for n, tube in enumerate(out_list):
+        root.SetBlock(n, tube.GetOutput())
+
+    # https://vtk.org/Wiki/VTK/Examples/Cxx/CompositeData/MultiBlockDataSet
+    # polydata = vtk.vtkCompositeDataGeometryFilter()
+    # polydata.SetInputData(root)
+
+    # mapper = vtk.vtkPolyDataMapper()
+    # mapper.SetInputConnection(0, polydata.GetOutputPort(0))
+
+    # https://lorensen.github.io/VTKExamples/site/Python/CompositeData/CompositePolyDataMapper/
+    mapper = vtk.vtkCompositePolyDataMapper2()
+    mapper.SetInputDataObject(root)
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+
+    renderer.AddActor(actor)
     renderWindow.Render()
     duration = time.time() - start_time
     print(f"Render duration {duration} seconds")
