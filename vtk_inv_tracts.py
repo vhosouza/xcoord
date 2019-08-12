@@ -83,9 +83,22 @@ def main():
 
     # Show tracks
     repos_trk = [0., -256., 0., 0., 0., 0.]
-    for i in range(5):
+
+    matrix_vtk = vtk.vtkMatrix4x4()
+
+    trans = np.identity(4)
+    trans[1, -1] = repos_trk[1]
+    final_matrix = np.linalg.inv(affine) @ trans
+
+    print("final_matrix: {}".format(final_matrix))
+
+    for row in range(0, 4):
+        for col in range(0, 4):
+            matrix_vtk.SetElement(row, col, final_matrix[row, col])
+
+    for i in range(10):
         seed = np.array([[-8.49, -8.39, 2.5]])
-        visualizeTracks(ren, ren_win, tracker, seed, replace=repos_trk, user_matrix=np.linalg.inv(affine))
+        visualizeTracks(ren, ren_win, tracker, seed, user_matrix=matrix_vtk)
 
     # Assign actor to the renderer
     ren.AddActor(brain_actor)
@@ -148,6 +161,7 @@ def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=Fal
     actor.SetMapper(mapper)
     actor.GetProperty().SetOpacity(opacity)
     actor.SetVisibility(visibility)
+    actor.GetProperty().SetBackfaceCulling(1)
 
     if colour:
         if type(colour) is str:
@@ -175,7 +189,7 @@ def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=Fal
     return actor
 
 
-def visualizeTracks(renderer, renderWindow, tracker, seed, replace, user_matrix):
+def visualizeTracks(renderer, renderWindow, tracker, seed, user_matrix):
     # Input the seed to the tracker object
     tracker.set_seeds(seed)
 
@@ -185,15 +199,9 @@ def visualizeTracks(renderer, renderWindow, tracker, seed, replace, user_matrix)
 
     # Convert the first track to a vtkActor, i.e., tractogram[0] is the track
     # computed for the first seed
-    trkActor = trk2vtkActor(tractogram[0], replace)
+    trkActor = trk2vtkActor(tractogram[0])
 
-    matrix_vtk = vtk.vtkMatrix4x4()
-
-    for row in range(0, 4):
-        for col in range(0, 4):
-            matrix_vtk.SetElement(row, col, user_matrix[row, col])
-
-    trkActor.SetUserMatrix(matrix_vtk)
+    trkActor.SetUserMatrix(user_matrix)
 
     renderer.AddActor(trkActor)
     renderWindow.Render()
@@ -202,7 +210,7 @@ def visualizeTracks(renderer, renderWindow, tracker, seed, replace, user_matrix)
 
 
 # This function converts a single track to a vtkActor
-def trk2vtkActor(trk, replace):
+def trk2vtkActor(trk):
     # convert trk to vtkPolyData
     trk = np.transpose(np.asarray(trk))
     numberOfPoints = trk.shape[0]
@@ -240,24 +248,24 @@ def trk2vtkActor(trk, replace):
     trkTube.SetInputData(trkData)
     trkTube.Update()
 
-    if replace:
-        transx, transy, transz, rotx, roty, rotz = replace
-        # create a transform that rotates the stl source
-        transform = vtk.vtkTransform()
-        transform.PostMultiply()
-        transform.RotateX(rotx)
-        transform.RotateY(roty)
-        transform.RotateZ(rotz)
-        transform.Translate(transx, transy, transz)
-
-        transform_filt = vtk.vtkTransformPolyDataFilter()
-        transform_filt.SetTransform(transform)
-        transform_filt.SetInputConnection(trkTube.GetOutputPort())
-        transform_filt.Update()
+    # if replace:
+    #     transx, transy, transz, rotx, roty, rotz = replace
+    #     # create a transform that rotates the stl source
+    #     transform = vtk.vtkTransform()
+    #     transform.PostMultiply()
+    #     transform.RotateX(rotx)
+    #     transform.RotateY(roty)
+    #     transform.RotateZ(rotz)
+    #     transform.Translate(transx, transy, transz)
+    #
+    #     transform_filt = vtk.vtkTransformPolyDataFilter()
+    #     transform_filt.SetTransform(transform)
+    #     transform_filt.SetInputConnection(trkTube.GetOutputPort())
+    #     transform_filt.Update()
 
     # mapper
     trkMapper = vtk.vtkPolyDataMapper()
-    trkMapper.SetInputData(transform_filt.GetOutput())
+    trkMapper.SetInputData(trkTube.GetOutput())
 
     # actor
     trkActor = vtk.vtkActor()
