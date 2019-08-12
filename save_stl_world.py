@@ -41,7 +41,7 @@ def vtk_smooth(iso, iter=20, relax=0.5, decimate=0.0):
     return isoSmooth
 
 
-def vtk_render_window(iso, img=None, color=[0.5, 0.5, 0.5]):
+def vtk_render_window(ren, iso, img=None, color=[0.5, 0.5, 0.5]):
     normals = vtk.vtkPolyDataNormals()
     normals.SetInputConnection(iso.GetOutputPort())
     normals.FlipNormalsOn()
@@ -53,14 +53,8 @@ def vtk_render_window(iso, img=None, color=[0.5, 0.5, 0.5]):
     isoActor.SetMapper(isoMapper)
     isoActor.GetProperty().SetColor(color)
 
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-
     # Add the actors to the renderer, set the background and size
-    if img!=None:
+    if img != None:
         outline = vtk.vtkOutlineFilter()
         outline.SetInputConnection(img.GetOutputPort())
         outlineMapper = vtk.vtkPolyDataMapper()
@@ -71,13 +65,7 @@ def vtk_render_window(iso, img=None, color=[0.5, 0.5, 0.5]):
         ren.AddActor(outlineActor)
 
     ren.AddActor(isoActor)
-    ren.SetBackground(1.0, 1.0, 1.0)
-    renWin.SetSize(450, 450)
-    ## ren.GetActiveCamera().Elevation(235)
-    ## ren.GetActiveCamera().SetViewUp(0,.5,-1)
-    ## ren.GetActiveCamera().Azimuth(90)
-    iren.Initialize()
-    return iren
+    return ren
 
 
 def montage(vol, ncols=None):
@@ -90,8 +78,24 @@ def montage(vol, ncols=None):
     return im
 
 
+def add_line(renderer, p1, p2, color=[0.0, 0.0, 1.0]):
+    line = vtk.vtkLineSource()
+    line.SetPoint1(p1)
+    line.SetPoint2(p2)
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(line.GetOutputPort())
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color)
+
+    renderer.AddActor(actor)
+
+
 id_smooth = True
-id_save = True
+id_save = False
+SHOW_AXES = True
 
 # get the pial surface
 data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
@@ -161,5 +165,24 @@ if id_save:
     stlWriter.SetInputConnection(refImageSpace2_xyz.GetOutputPort())
     stlWriter.Write()
 
-iren = vtk_render_window(refImageSpace2_xyz)
+ren = vtk.vtkRenderer()
+renWin = vtk.vtkRenderWindow()
+renWin.AddRenderer(ren)
+iren = vtk.vtkRenderWindowInteractor()
+iren.SetRenderWindow(renWin)
+
+ren = vtk_render_window(ren, refImageSpace2_xyz)
+ren = vtk_render_window(ren, iso)
+
+if SHOW_AXES:
+    add_line(ren, [0, 0, 0], [150, 0, 0], color=[1.0, 0.0, 0.0])
+    add_line(ren, [0, 0, 0], [0, 150, 0], color=[0.0, 1.0, 0.0])
+    add_line(ren, [0, 0, 0], [0, 0, 150], color=[0.0, 0.0, 1.0])
+
+ren.SetBackground(1.0, 1.0, 1.0)
+renWin.SetSize(450, 450)
+## ren.GetActiveCamera().Elevation(235)
+## ren.GetActiveCamera().SetViewUp(0,.5,-1)
+## ren.GetActiveCamera().Azimuth(90)
+iren.Initialize()
 iren.Start()

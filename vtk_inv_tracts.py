@@ -19,6 +19,10 @@ def main():
     stl_path = b'wm_orig_smooth_world.stl'
     brain_path = os.path.join(data_dir, stl_path)
 
+    data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
+    stl_path = b'wm.stl'
+    brain_inv_path = os.path.join(data_dir, stl_path)
+
     nii_path = b'sub-P0_dwi_FOD.nii'
     trk_path = os.path.join(data_dir, nii_path)
 
@@ -31,7 +35,9 @@ def main():
     pix_dim = imagedata.header.get_zooms()
     img_shape = imagedata.header.get_data_shape()
 
-    print("pix_dim: {0}, img_shape: {0}".format(pix_dim, img_shape))
+    # print(imagedata.header)
+
+    print("pix_dim: {}, img_shape: {}".format(pix_dim, img_shape))
 
     if AFFINE_IMG:
         affine = imagedata.affine
@@ -56,7 +62,18 @@ def main():
     tracker = Trekker.tracker(trk_path)
 
     repos = [0., 0., 0., 0., 0., 0.]
-    brain_actor = load_stl(brain_path, ren, opacity=0.5, replace=repos, user_matrix=np.identity(4))
+    brain_actor = load_stl(brain_inv_path, ren, opacity=.1, colour=[1.0, 1.0, 1.0], replace=repos, user_matrix=np.identity(4))
+    bds = brain_actor.GetBounds()
+    print("Y length: {} --- Bounds: {}".format(bds[3] - bds[2], bds))
+
+    repos = [0., 0., 0., 0., 0., 0.]
+    brain_actor_mri = load_stl(brain_path, ren, opacity=.1, colour=[0.0, 1.0, 0.0], replace=repos, user_matrix=np.linalg.inv(affine))
+    bds = brain_actor_mri.GetBounds()
+    print("Y length: {} --- Bounds: {}".format(bds[3] - bds[2], bds))
+
+    repos = [0., 256., 0., 0., 0., 0.]
+    # brain_inv_actor = load_stl(brain_inv_path, ren, colour="SkinColor", opacity=0.5, replace=repos, user_matrix=np.linalg.inv(affine))
+    brain_inv_actor = load_stl(brain_inv_path, ren, colour="SkinColor", opacity=.1, replace=repos)
 
     # Add axes to scene origin
     if SHOW_AXES:
@@ -65,13 +82,15 @@ def main():
         add_line(ren, [0, 0, 0], [0, 0, 150], color=[0.0, 0.0, 1.0])
 
     # Show tracks
-    repos_trk = [0., 0., 0., 0., 0., 0.]
+    repos_trk = [0., -256., 0., 0., 0., 0.]
     for i in range(5):
         seed = np.array([[-8.49, -8.39, 2.5]])
-        visualizeTracks(ren, ren_win, tracker, seed, replace=repos_trk, user_matrix=np.linalg.inv(np.identity(4)))
+        visualizeTracks(ren, ren_win, tracker, seed, replace=repos_trk, user_matrix=np.linalg.inv(affine))
 
     # Assign actor to the renderer
     ren.AddActor(brain_actor)
+    ren.AddActor(brain_inv_actor)
+    ren.AddActor(brain_actor_mri)
 
     # Enable user interface interactor
     iren.Initialize()
@@ -238,7 +257,7 @@ def trk2vtkActor(trk, replace):
 
     # mapper
     trkMapper = vtk.vtkPolyDataMapper()
-    trkMapper.SetInputData(trkTube.GetOutput())
+    trkMapper.SetInputData(transform_filt.GetOutput())
 
     # actor
     trkActor = vtk.vtkActor()

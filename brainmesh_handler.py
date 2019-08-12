@@ -5,6 +5,7 @@ import pyvista
 import numpy as np
 import Trekker
 
+
 class Brain:
     def __init__(self, img_path, mask_path):
 
