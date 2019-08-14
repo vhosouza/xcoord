@@ -9,14 +9,13 @@ import numpy as np
 import multiprocessing as mp
 
 
-# def visualizeTracks(tracker, seed):
-def visualizeTracks(tractogram):
+def visualizeTracks(tracker, seed):
 
-    # tracker.set_seeds(seed)
-    # tractogram = tracker.run()
+    tracker.set_seeds(seed)
 
-    # trk = np.transpose(np.asarray(tractogram[0]))
-    trk = np.transpose(np.asarray(tractogram))
+    tractogram = tracker.run()
+
+    trk = np.transpose(np.asarray(tractogram[0]))
     numberOfPoints = trk.shape[0]
 
     points = vtk.vtkPoints()
@@ -60,17 +59,24 @@ def visualizeTracks(tractogram):
     trkActor = vtk.vtkActor()
     trkActor.SetMapper(trkMapper)
 
-    return trkActor
+    trk_act.append(trkActor)
+
+    # return trkActor
 
 
-if __name__ == "__main__":
+def main():
+    manager = mp.Manager()
+    global tracker
+    global trk_act
+
     # Initialize a Trekker tracker objects by providing the input FOD image
     # This will just read the image, put in memory
     data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
     FOD_path = b"sub-P0_dwi_FOD.nii"
     # FOD_path = b"test_fod.nii"
     full_path = os.path.join(data_dir, FOD_path)
-    tracker = Trekker.tracker(full_path)
+    tracker = manager.Trekker.tracker(full_path)
+    trk_act = manager.list()
 
     # Create a rendering window, renderer and interactor
     renderer = vtk.vtkRenderer()
@@ -80,21 +86,18 @@ if __name__ == "__main__":
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetRenderWindow(renderWindow)
 
-    start_time = time.time()
-
     # Show tracks
     # for i in range(5):
-    # seed = [np.array([[-8.49, -8.39, 2.5]])]*5
+    seed = [np.array([[-8.49, -8.39, 2.5]])]*5
     # tracker_list = [tracker for _ in range(5)]
-    tracker.set_seeds(np.array([[-8.49, -8.39, 2.5]]))
-    # tractogram = tracker.run()
-    tracker_list = [tracker.run()[0] for _ in range(5)]
-    print(len(tracker_list))
 
-    with mp.Pool(5) as pool:
-        # pool.map(cpu_bound, numbers)
-        # pool.starmap(visualizeTracks, zip(tracker_list, seed))
-        pool.map(visualizeTracks, tracker_list)
+    start_time = time.time()
+
+    pool = mp.Pool(5)
+    # pool.map(cpu_bound, numbers)
+    pool.map(visualizeTracks, seed)
+    pool.close()
+    pool.join()
 
     duration = time.time() - start_time
     print(f"Tract computing duration {duration} seconds")
@@ -111,3 +114,7 @@ if __name__ == "__main__":
     # End program
     renderWindow.Finalize()
     interactor.TerminateApp()
+
+
+if __name__ == "__main__":
+    main()
