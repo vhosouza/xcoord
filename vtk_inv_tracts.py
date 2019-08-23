@@ -8,7 +8,7 @@ import numpy as np
 import transformations as tf
 import Trekker
 import vtk
-
+import time
 
 def main():
     SHOW_AXES = True
@@ -60,6 +60,10 @@ def main():
     iren.SetRenderWindow(ren_win)
 
     tracker = Trekker.tracker(trk_path)
+    tracker.set_seed_maxTrials(1)
+    tracker.set_stepSize(0.1)
+    tracker.set_minFODamp(0.04)
+    tracker.set_probeQuality(3)
 
     repos = [0., 0., 0., 0., 0., 0.]
     brain_actor = load_stl(brain_inv_path, ren, opacity=.1, colour=[1.0, 1.0, 1.0], replace=repos, user_matrix=np.identity(4))
@@ -218,9 +222,11 @@ def trk2vtkActor(trk):
     points = vtk.vtkPoints()
     lines = vtk.vtkCellArray()
 
-    colors = vtk.vtkFloatArray()
-    colors.SetNumberOfComponents(4)
-    colors.SetName("tangents")
+    colors = vtk.vtkUnsignedCharArray()
+    colors.SetNumberOfComponents(3)
+    # colors = vtk.vtkFloatArray()
+    # colors.SetNumberOfComponents(4)
+    # colors.SetName("tangents")
 
     k = 0
     lines.InsertNextCell(numberOfPoints)
@@ -232,9 +238,12 @@ def trk2vtkActor(trk):
         if j < (numberOfPoints - 1):
             direction = trk[j + 1, :] - trk[j, :]
             direction = direction / np.linalg.norm(direction)
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            direc = [int(255 * abs(s)) for s in direction]
+            colors.InsertNextTuple(direc)
+            # colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
         else:
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            colors.InsertNextTuple(direc)
+            # colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
 
     trkData = vtk.vtkPolyData()
     trkData.SetPoints(points)
@@ -243,7 +252,7 @@ def trk2vtkActor(trk):
 
     # make it a tube
     trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.1)
+    trkTube.SetRadius(0.3)
     trkTube.SetNumberOfSides(4)
     trkTube.SetInputData(trkData)
     trkTube.Update()

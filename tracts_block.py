@@ -29,9 +29,11 @@ def trk2vtkActor(tracker, seed, out_list):
     points = vtk.vtkPoints()
     lines = vtk.vtkCellArray()
 
-    colors = vtk.vtkFloatArray()
-    colors.SetNumberOfComponents(4)
-    colors.SetName("tangents")
+    colors = vtk.vtkUnsignedCharArray()
+    colors.SetNumberOfComponents(3)
+    # colors = vtk.vtkFloatArray()
+    # colors.SetNumberOfComponents(4)
+    # colors.SetName("tangents")
 
     k = 0
     lines.InsertNextCell(numberOfPoints)
@@ -43,9 +45,12 @@ def trk2vtkActor(tracker, seed, out_list):
         if j < (numberOfPoints - 1):
             direction = trk[j + 1, :] - trk[j, :]
             direction = direction / np.linalg.norm(direction)
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            direc = [int(255 * abs(s)) for s in direction]
+            # colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            colors.InsertNextTuple(direc)
         else:
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            # colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
+            colors.InsertNextTuple(direc)
 
     trkData = vtk.vtkPolyData()
     trkData.SetPoints(points)
@@ -54,7 +59,7 @@ def trk2vtkActor(tracker, seed, out_list):
 
     # make it a tube
     trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.1)
+    trkTube.SetRadius(0.3)
     trkTube.SetNumberOfSides(4)
     trkTube.SetInputData(trkData)
     trkTube.Update()
@@ -93,6 +98,10 @@ if __name__ == "__main__":
     # FOD_path = b"test_fod.nii"
     full_path = os.path.join(data_dir, FOD_path)
     tracker = Trekker.tracker(full_path)
+    tracker.set_seed_maxTrials(1)
+    tracker.set_stepSize(0.1)
+    tracker.set_minFODamp(0.04)
+    tracker.set_probeQuality(3)
 
     # Create a rendering window, renderer and interactor
     renderer = vtk.vtkRenderer()
