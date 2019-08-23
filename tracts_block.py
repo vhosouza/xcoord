@@ -115,7 +115,7 @@ if __name__ == "__main__":
     #     tractogram.append(tracker.run()[0])
 
     # find_sums(tracker_list, seed)
-    procs = 5
+    procs = 10
 
     jobs = []
     out_list = list()
@@ -155,11 +155,16 @@ if __name__ == "__main__":
     mapper = vtk.vtkCompositePolyDataMapper2()
     mapper.SetInputDataObject(root)
 
+    duration = time.time() - start_time
+    print(f"Multiblock duration {1e6*duration} mili-seconds")
+
+    start_time = time.time()
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
 
     renderer.AddActor(actor)
     renderWindow.Render()
+
     duration = time.time() - start_time
     print(f"Render duration {duration} seconds")
 
