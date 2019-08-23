@@ -165,7 +165,7 @@ if __name__ == "__main__":
     mapper.SetInputDataObject(root)
 
     duration = time.time() - start_time
-    print(f"Multiblock duration {1e6*duration} mili-seconds")
+    print(f"Multiblock duration {1e6*duration} micro-seconds")
 
     start_time = time.time()
     actor = vtk.vtkActor()
