@@ -31,14 +31,14 @@ def main():
     SHOW_AXES = True
     SHOW_SCENE_AXES = True
     SHOW_COIL_AXES = True
-    SHOW_SKIN = False
-    SHOW_BRAIN = False
+    SHOW_SKIN = True
+    SHOW_BRAIN = True
     SHOW_COIL = True
     SHOW_MARKERS = True
     TRANSF_COIL = True
     SHOW_PLANE = False
     SELECT_LANDMARKS = 'scalp'  # 'all', 'mri' 'scalp'
-    SAVE_ID = True
+    SAVE_ID = False
     AFFINE_IMG = True
     NO_SCALE = True
     SCREENSHOT = False
@@ -96,11 +96,16 @@ def main():
     print("\nImage shape: \n")
     print(img_shape)
 
+    affine_aux = imagedata.affine.copy()
+    if NO_SCALE:
+        scale, shear, angs, trans, persp = tf.decompose_matrix(imagedata.affine)
+        affine_aux = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
+
     if AFFINE_IMG:
-        affine = imagedata.affine
-        if NO_SCALE:
-            scale, shear, angs, trans, persp = tf.decompose_matrix(imagedata.affine)
-            affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
+        affine = affine_aux
+        # if NO_SCALE:
+        #     scale, shear, angs, trans, persp = tf.decompose_matrix(imagedata.affine)
+        #     affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
     else:
         affine = np.identity(4)
     # affine_I = np.identity(4)
@@ -157,8 +162,34 @@ def main():
         if SHOW_MARKERS:
             marker_actor = add_marker(coord_aux, ren, col[n])
 
+    if id_extra:
+        # compare coil locations in experiments with 8, 9, 10 and 12 mm shifts
+        # MRI Nexstim space: 8, 9, 10, 12 mm coil locations
+        # coord_others = [[122.2, 198.8, 99.7],
+        #                 [121.1, 200.4, 100.1],
+        #                 [120.5, 200.7, 98.2],
+        #                 [117.7, 202.9, 96.6]]
+        if AFFINE_IMG:
+            # World space: 8, 9, 10, 12 mm coil locations
+            coord_others = [[-42.60270233154297, 28.266497802734378, 81.02450256347657],
+                            [-41.50270233154296, 28.66649780273437, 82.62450256347657],
+                            [-40.90270233154297, 26.766497802734378, 82.92450256347655],
+                            [-38.10270233154297, 25.16649780273437, 85.12450256347657]]
+        else:
+            # MRI space reordered and flipped: 8, 9, 10, 12 mm coil locations
+            coord_others = [[27.8,  99.7, 198.8],
+                            [28.9, 100.1, 200.4],
+                            [29.5, 98.2, 200.7],
+                            [32.3,  96.6, 202.9]]
+
+        col_others = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [0., 0., 0.]]
+        for n, c in enumerate(coord_others):
+            marker_actor = add_marker(c, ren, col_others[n])
+
     print('\nOriginal coordinates from Nexstim: \n')
     [print(s) for s in coords]
+    print('\nMRI coordinates flipped and reordered: \n')
+    [print(s) for s in coords_np]
     print('\nTransformed coordinates to MRI space: \n')
     [print(s) for s in coord_mri]
 
@@ -214,11 +245,17 @@ def main():
         np.savetxt(output_file + '.txt', transf_matrix.reshape([1, 16]), delimiter=';', header=hdr_names)
 
     if SHOW_BRAIN:
-        # brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=0.7, user_matrix=np.linalg.inv(affine))
-        brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=1.)
+        if AFFINE_IMG:
+            brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=1.)
+        else:
+            # to visualize brain in MRI space
+            brain_actor = load_stl(brain_file, ren, colour=[0., 1., 1.], opacity=1., user_matrix=np.linalg.inv(affine_aux))
     if SHOW_SKIN:
-        # skin_actor = load_stl(skin_file, ren, opacity=0.5, user_matrix=np.linalg.inv(affine))
-        skin_actor = load_stl(skin_file, ren, colour="SkinColor", opacity=.4)
+        if AFFINE_IMG:
+            skin_actor = load_stl(skin_file, ren, colour="SkinColor", opacity=.4)
+        else:
+            # to visualize skin in MRI space
+            skin_actor = load_stl(skin_file, ren, colour="SkinColor", opacity=.4, user_matrix=np.linalg.inv(affine_aux))
 
     if SHOW_COIL:
         # reposition STL object prior to transformation matrix
@@ -280,7 +317,7 @@ def add_marker(coord, ren, color):
     # x, y, z = coord
 
     ball_ref = vtk.vtkSphereSource()
-    ball_ref.SetRadius(2)
+    ball_ref.SetRadius(1)
     ball_ref.SetCenter(coord)
 
     mapper = vtk.vtkPolyDataMapper()
