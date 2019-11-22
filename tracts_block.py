@@ -59,7 +59,7 @@ def trk2vtkActor(tracker, seed, out_list):
 
     # make it a tube
     trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.3)
+    trkTube.SetRadius(0.5)
     trkTube.SetNumberOfSides(4)
     trkTube.SetInputData(trkData)
     trkTube.Update()
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     #     tractogram.append(tracker.run()[0])
 
     # find_sums(tracker_list, seed)
-    procs = 10
+    procs = 5
 
     jobs = []
     out_list = list()

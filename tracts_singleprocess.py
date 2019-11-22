@@ -48,7 +48,7 @@ def trk2vtkActor(trk):
 
     # make it a tube
     trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.1)
+    trkTube.SetRadius(0.5)
     trkTube.SetNumberOfSides(4)
     trkTube.SetInputData(trkData)
     trkTube.Update()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Show tracks
-    for i in range(5):
+    for i in range(20):
         seed = np.array([[-8.49, -8.39, 2.5]])
         visualizeTracks(renderer, tracker, seed)
 
