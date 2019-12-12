@@ -1,7 +1,3 @@
-#import threading
-
-import multiprocessing as mp
-
 import time
 
 import Trekker
@@ -11,7 +7,8 @@ import vtk
 
 import pickle
 import threading
-import numba as nb
+import math
+
 
 """
 Thread to update the coordinates with the fiducial points
@@ -21,20 +18,72 @@ for better real-time navigation
 """
 
 
-def compute_direction(trk_list):
-    trk = np.transpose(np.asarray(trk_list))
-    # numb_points = trk.shape[0]
-    direction_rescale = []
+class ComputeTracts(threading.Thread):
+    """
+    Thread to update the coordinates with the fiducial points
+    co-registration method while the Navigation Button is pressed.
+    Sleep function in run method is used to avoid blocking GUI and
+    for better real-time navigation
+    """
 
-    for j in range(trk.shape[0]-1):
-        direction = trk[j + 1, :] - trk[j, :]
-        direction = direction / np.linalg.norm(direction)
-        direction_rescale.append([int(255*abs(s)) for s in direction])
+    def __init__(self, tracker, position, n_tracts):
+        threading.Thread.__init__(self)
+        # trekker variables
+        self.tracker = tracker
+        self.position = position
+        self.n_tracts = n_tracts
+        # threading variable
+        self._pause_ = False
+        # self.mutex = threading.Lock()
+        # self.start()
 
-    # repeat color for last point
-    direction_rescale.append([int(255 * abs(s)) for s in direction])
+    def stop(self):
+        # self.mutex.release()
+        self._pause_ = True
 
-    return direction_rescale
+    def run(self):
+        if self._pause_:
+            return
+        else:
+            # self.mutex.acquire()
+            try:
+                seed = self.position
+
+                chunck_size = 10
+                nchuncks = math.floor(self.n_tracts / chunck_size)
+                # print("The chunck_size: ", chunck_size)
+                # print("The nchuncks: ", nchuncks)
+
+                root = vtk.vtkMultiBlockDataSet()
+                # n = 1
+                n_tracts = 0
+                # while n <= nchuncks:
+                for n in range(nchuncks):
+                    # Compute the tracts
+                    trk_list = []
+                    # for _ in range(chunck_size):
+                    self.tracker.set_seeds(np.repeat(seed, chunck_size, axis=0))
+                    if self.tracker.run():
+                        trk_list.extend(self.tracker.run())
+
+                    # Transform tracts to array
+                    trk_arr = [np.asarray(trk_n).T if trk_n else None for trk_n in trk_list]
+
+                    # Compute the directions
+                    trk_dir = [simple_direction(trk_n) for trk_n in trk_arr]
+
+                    # Compute the vtk tubes
+                    out_list = [compute_tubes_vtk(trk_arr_n, trk_dir_n) for trk_arr_n, trk_dir_n in zip(trk_arr, trk_dir)]
+                    # Compute the actor
+                    root = tracts_root(out_list, root, n_tracts)
+                    n_tracts += len(out_list)
+
+                    # wx.CallAfter(Publisher.sendMessage, 'Update tracts', flag=True, root=root, affine_vtk=self.affine_vtk)
+            finally:
+                self.mutex.release()
+
+                # time.sleep(0.05)
+                # n += 1
 
 
 def simple_direction(trk_n):
@@ -98,7 +147,7 @@ def compute_tubes(trk_list):
     return trkTube, direc_out
 
 
-def to_vtk(trk, direc):
+def compute_tubes_vtk(trk, direc):
     numb_points = trk.shape[0]
     points = vtk.vtkPoints()
     lines = vtk.vtkCellArray()
@@ -167,130 +216,6 @@ def split_simple(trk_list):
 
     return out_list
 
-def multi_process(trk_list):
-    # Step 1: Init multiprocessing.Pool()
-    pool = mp.Pool(mp.cpu_count())
-    # Step 2: `pool.apply` the `howmany_within_range()`
-    # out_list = [pool.apply(compute_tubes, args=(trk_n)) for trk_n in trk_list]
-    # out_list = [pool.map(compute_tubes, trk_list)]
-    # out_list = [pool.starmap(compute_tubes, [trk_n for trk_n in trk_list])]
-    # out_list = [pool.starmap(compute_tubes, trk_list)]
-    # Step 3: Don't forget to close
-    out_list = [pool.map(compute_direction, trk_list)]
-    pool.close()
-    return out_list
-
-
-def to_vtk_thread(trk, direc, out_list):
-    numb_points = trk.shape[0]
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    # colors = vtk.vtkFloatArray()
-    colors = vtk.vtkUnsignedCharArray()
-    colors.SetNumberOfComponents(3)
-    # colors.SetName("tangents")
-
-    k = 0
-    lines.InsertNextCell(numb_points)
-    for j in range(numb_points):
-        points.InsertNextPoint(trk[j, :])
-        lines.InsertCellPoint(k)
-        k += 1
-
-        # if j < (numb_points - 1):
-        colors.InsertNextTuple(direc[j, :])
-        # else:
-        #     colors.InsertNextTuple(direc[j, :])
-
-    trkData = vtk.vtkPolyData()
-    trkData.SetPoints(points)
-    trkData.SetLines(lines)
-    trkData.GetPointData().SetScalars(colors)
-
-    # make it a tube
-    trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.5)
-    trkTube.SetNumberOfSides(4)
-    trkTube.SetInputData(trkData)
-    trkTube.Update()
-
-    out_list.append(trkTube)
-
-
-def to_vtk_multiprocessing(trk, direc, out_list):
-    numb_points = trk.shape[0]
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    # colors = vtk.vtkFloatArray()
-    colors = vtk.vtkUnsignedCharArray()
-    colors.SetNumberOfComponents(3)
-    # colors.SetName("tangents")
-
-    k = 0
-    lines.InsertNextCell(numb_points)
-    for j in range(numb_points):
-        points.InsertNextPoint(trk[j, :])
-        lines.InsertCellPoint(k)
-        k += 1
-
-        # if j < (numb_points - 1):
-        colors.InsertNextTuple(direc[j, :])
-        # else:
-        #     colors.InsertNextTuple(direc[j, :])
-
-    trkData = vtk.vtkPolyData()
-    trkData.SetPoints(points)
-    trkData.SetLines(lines)
-    trkData.GetPointData().SetScalars(colors)
-
-    # make it a tube
-    trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.5)
-    trkTube.SetNumberOfSides(4)
-    trkTube.SetInputData(trkData)
-    trkTube.Update()
-
-    out_list.append(trkTube)
-    # print("Here")
-
-def threading_process(trk_list):
-    trk_arr = [np.asarray(trk_n).T if trk_n else None for trk_n in trk_list]
-    trk_dir = [simple_direction(trk_n) for trk_n in trk_arr]
-    # out_list = [to_vtk(trk_arr_n, trk_dir_n) for trk_arr_n, trk_dir_n in zip(trk_arr, trk_dir)]
-    procs = 200
-    jobs = []
-    out_list = list()
-    for i in range(procs):
-        process = threading.Thread(target=to_vtk_thread(trk_arr[i], trk_dir[i], out_list))
-        jobs.append(process)
-
-    # Start the processes (i.e. calculate the random number lists)
-    for j in jobs:
-        j.start()
-
-    # Ensure all of the processes have finished
-    for j in jobs:
-        j.join()
-
-    return out_list
-
-
-def multi_process_2(trk_list):
-    trk_arr = [np.asarray(trk_n).T if trk_n else None for trk_n in trk_list]
-    trk_dir = [simple_direction(trk_n) for trk_n in trk_arr]
-    procs = []
-    out_list = list()
-    for trk_i, trd_d_i in zip(trk_arr, trk_dir):
-        proc = mp.Process(target=to_vtk_multiprocessing, args=(trk_i, trd_d_i, out_list))
-        procs.append(proc)
-        proc.start()
-
-    for proc in procs:
-        proc.join()
-
-    return out_list
 
 def compute_tracts(n_tracts, tracker, seed):
     # trk_list = [None] * n_tracts
@@ -306,7 +231,7 @@ def compute_tracts(n_tracts, tracker, seed):
     return trk_list
 
 
-def visualize_tracts(out_list):
+def tracts_root(out_list):
     # create tracts only when at least one was computed
     if not out_list.count(None) == len(out_list):
         root = vtk.vtkMultiBlockDataSet()
@@ -323,9 +248,6 @@ def visualize_tracts(out_list):
         actor.SetMapper(mapper)
 
     return actor
-        #actor.SetUserMatrix(self.affine_vtk)
-        # duration = time.time() - start_time
-        # print(f"Tract computing duration {duration} seconds")
 
 
 if __name__ == "__main__":
@@ -412,7 +334,7 @@ if __name__ == "__main__":
     # print(f"Tract computing numba duration {duration} seconds")
 
     start_time = time.time()
-    actor = visualize_tracts(final_list_2)
+    actor = tracts_root(final_list_2)
     duration = time.time() - start_time
     print(f"Visualize duration {duration} seconds")
 
