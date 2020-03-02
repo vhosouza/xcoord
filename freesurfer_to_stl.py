@@ -12,6 +12,7 @@ If your VTK version is 5.x then remove the line: colors = vtk.vtkNamedColors()
 
 """
 
+import os
 import vtk
 import nibabel.freesurfer.io as fsio
 
@@ -33,19 +34,22 @@ def mkVtkIdList(it):
 
 
 def main():
-    colors = vtk.vtkNamedColors()
 
-    # fil = r'C:\Users\victo\OneDrive\data\nexstim_coord\freesurfer\ppM1_S1\surf\lh.pial'
-    fil = r'C:\Users\victo\OneDrive\data\nexstim_coord\freesurfer\ppM1_S5\surf\lh.pial'
-    filename = 'lh.pial_5.stl'
+    save_id = True
+    subj = 5
+    fs_file = 'lh.pial'
+    fs_dir = os.environ['OneDriveConsumer'] + r'\data\nexstim_coord\freesurfer\ppM1_S{}\surf'.format(subj)
+    fs_path = os.path.join(fs_dir, fs_file)
+    filename_save = 'lh.pial_8.stl'
 
-    x, pts, volume_info = fsio.read_geometry(fil, read_metadata=True)
+    x, pts, volume_info = fsio.read_geometry(fs_path, read_metadata=True)
 
     # We'll create the building blocks of polydata including data attributes.
     cube = vtk.vtkPolyData()
     points = vtk.vtkPoints()
     polys = vtk.vtkCellArray()
     scalars = vtk.vtkFloatArray()
+    colors = vtk.vtkNamedColors()
 
     # Load the point, cell, and data attributes.
     for i, xi in enumerate(x):
@@ -60,11 +64,12 @@ def main():
     cube.SetPolys(polys)
     cube.GetPointData().SetScalars(scalars)
 
-    # Write the stl file to disk
-    stlWriter = vtk.vtkSTLWriter()
-    stlWriter.SetFileName(filename)
-    stlWriter.SetInputData(cube)
-    stlWriter.Write()
+    if save_id:
+        # Write the stl file to disk
+        stlWriter = vtk.vtkSTLWriter()
+        stlWriter.SetFileName(filename_save)
+        stlWriter.SetInputData(cube)
+        stlWriter.Write()
 
     # Now we'll look at it.
     cubeMapper = vtk.vtkPolyDataMapper()
