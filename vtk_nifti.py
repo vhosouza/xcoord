@@ -1,39 +1,46 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+import os
 
 import vtk
 import nibabel as nib
-import os
 
-# FOD_path = b"test_fod.nii"
+data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\baran\anat_reg_improve_20200609'
+data_dir = data_dir.encode('utf-8')
 
-data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\juuso'
-img_path = 'sub-P0_T1w_biascorrected.nii'
-full_path = os.path.join(data_dir, img_path)
-img = nib.load(full_path)
+nii_path = b'Baran_T1_inFODspace.nii'
+act_path = os.path.join(data_dir, nii_path)
 
-# data_dir = b'C:\Users\deoliv1\OneDrive - Aalto University\data\dti_navigation\juuso'
-# img_path = b'sub-P0_T1w_biascorrected.nii'
-# full_path = os.path.join(data_dir, img_path)
-# img = nib.load(full_path.decode('utf-8'))
+img = nib.load(act_path.decode('utf-8'))
+# img = nib.as_closest_canonical(img)
+# img.update_header()
 
 img_data = img.get_data()
-data_string = img_data.tostring()
+img_data_shape = img_data.shape
 
+data_string = img_data.tostring()
 dataImporter = vtk.vtkImageImport()
-dataImporter.SetDataScalarTypeToShort()
-dataImporter.SetNumberOfScalarComponents(1)
 dataImporter.CopyImportVoidPointer(data_string, len(data_string))
-dataImporter.SetDataExtent(0, img_data.shape[2] - 1, 0, img_data.shape[1] - 1, 0, img_data.shape[0] - 1)
-dataImporter.SetWholeExtent(0, img_data.shape[2] - 1, 0, img_data.shape[1] - 1, 0, img_data.shape[0] - 1)
+# dataImporter.SetDataScalarTypeToShort()
+dataImporter.SetDataScalarType(vtk.VTK_UNSIGNED_SHORT)
+dataImporter.SetNumberOfScalarComponents(1)
+dataImporter.SetDataExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
+dataImporter.SetWholeExtent(0, img_data_shape[2] - 1, 0, img_data_shape[1] - 1, 0, img_data_shape[0] - 1)
 dataImporter.Update()
 
+mask_reader = vtk.vtkNIFTIImageReader()
+mask_reader.SetFileName(act_path.decode('utf-8'))
+mask_reader.Update()
+
+temp_data = mask_reader.GetOutput()
 new_data = vtk.vtkImageData()
-new_data.DeepCopy(dataImporter.GetOutput())
+new_data.DeepCopy(temp_data)
 
 #outline
-outline = vtk.vtkOutlineFilter()
+outline=vtk.vtkOutlineFilter()
 outline.SetInputData(new_data)
-outlineMapper = vtk.vtkPolyDataMapper()
+outlineMapper=vtk.vtkPolyDataMapper()
 outlineMapper.SetInputConnection(outline.GetOutputPort())
 outlineActor = vtk.vtkActor()
 outlineActor.SetMapper(outlineMapper)
@@ -47,7 +54,7 @@ planeWidgetX = vtk.vtkImagePlaneWidget()
 planeWidgetX.DisplayTextOn()
 planeWidgetX.SetInputData(new_data)
 planeWidgetX.SetPlaneOrientationToXAxes()
-planeWidgetX.SetSliceIndex(50)
+planeWidgetX.SetSliceIndex(100)
 planeWidgetX.SetPicker(picker)
 planeWidgetX.SetKeyPressActivationValue("x")
 prop1 = planeWidgetX.GetPlaneProperty()
@@ -68,7 +75,7 @@ planeWidgetZ = vtk.vtkImagePlaneWidget()
 planeWidgetZ.DisplayTextOn()
 planeWidgetZ.SetInputData(new_data)
 planeWidgetZ.SetPlaneOrientationToZAxes()
-planeWidgetZ.SetSliceIndex(50)
+planeWidgetZ.SetSliceIndex(100)
 planeWidgetZ.SetPicker(picker)
 planeWidgetZ.SetKeyPressActivationValue("z")
 prop2 = planeWidgetY.GetPlaneProperty()
@@ -85,7 +92,7 @@ renwin.AddRenderer(renderer)
 
 #Add outlineactor
 renderer.AddActor(outlineActor)
-renwin.SetSize(800, 800)
+renwin.SetSize(800,800)
 
 interactor = vtk.vtkRenderWindowInteractor()
 interactor.SetRenderWindow(renwin)

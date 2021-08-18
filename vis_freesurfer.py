@@ -28,7 +28,7 @@ def main():
     subj = 5
 
     fs_file = '{}.{}'.format(hemi, surf)
-    fs_dir = os.environ['OneDriveConsumer'] + r'\data\nexstim_coord\freesurfer\ppM1_S{}\surf'.format(subj)
+    fs_dir = os.environ['OneDrive'] + r'\data\nexstim_coord\freesurfer\ppM1_S{}\surf'.format(subj)
     fs_path = os.path.join(fs_dir, fs_file)
 
     vertices, faces, volume_info = fsio.read_geometry(fs_path, read_metadata=True)

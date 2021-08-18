@@ -12,6 +12,7 @@ import time
 import psutil
 import dti_funcs as dti
 
+
 def main():
     SHOW_AXES = True
     AFFINE_IMG = True

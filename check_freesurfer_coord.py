@@ -83,33 +83,33 @@ def main():
         # subj = 's03'
         subj = 'S5'
         id_extra = False  # 8, 9, 10, 12, False
-        data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
+        data_dir = os.environ['OneDrive'] + r'\data\nexstim_coord'
         # data_dir = 'P:\\tms_eeg\\mTMS\\projects\\lateral ppTMS M1\\E-fields\\'
         # data_subj = data_dir + subj + '\\'
-        simnibs_dir = data_dir + 'simnibs\\m2m_ppM1_%s_nc\\' % subj
-        fs_dir = data_dir + 'freesurfer\\ppM1_%s\\' % subj
+        simnibs_dir = data_dir + r'\simnibs\m2m_ppM1_{}_nc'.format(subj)
+        fs_dir = data_dir + r'\freesurfer\ppM1_{}'.format(subj)
         if id_extra:
-            nav_dir = data_dir + 'nav_coordinates\\ppM1_%s_%d\\' % (subj, id_extra)
+            nav_dir = data_dir + r'\nav_coordinates\ppM1_{}_{}'.format(subj, id_extra)
         else:
-            nav_dir = data_dir + 'nav_coordinates\\ppM1_%s\\' % subj
+            nav_dir = data_dir + r'\nav_coordinates\ppM1_{}'.format(subj)
 
         # filenames
         # coil_file = data_dir + 'magstim_fig8_coil.stl'
-        coil_file = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\magstim_fig8_coil.stl'
+        coil_file = os.environ['OneDrive'] + r'\data\nexstim_coord\magstim_fig8_coil.stl'
         if id_extra:
-            coord_file = nav_dir + 'ppM1_eximia_%s_%d.txt' % (subj, id_extra)
+            coord_file = nav_dir + r'\ppM1_eximia_{}_{}.txt'.format(subj, id_extra)
         else:
-            coord_file = nav_dir + 'ppM1_eximia_%s.txt' % subj
+            coord_file = nav_dir + r'\ppM1_eximia_{}.txt'.format(subj)
         # img_file = data_subj + subj + '.nii'
-        img_file = data_dir + 'mri\\ppM1_%s\\ppM1_%s.nii' % (subj, subj)
-        brain_file = simnibs_dir + "wm.stl"
-        skin_file = simnibs_dir + "skin.stl"
-        fs_file = fs_dir + "lh.pial.stl"
-        fs_t1 = fs_dir + "mri\\T1.mgz"
+        img_file = data_dir + r'\mri\ppM1_{}\ppM1_{}.nii'.format(subj, subj)
+        brain_file = simnibs_dir + r'\wm.stl'
+        skin_file = simnibs_dir + r'\skin.stl'
+        fs_file = fs_dir + r'\lh.pial.stl'
+        fs_t1 = fs_dir + r'\mri\T1.mgz'
         if id_extra:
-            output_file = nav_dir + 'transf_mat_%s_%d' % (subj, id_extra)
+            output_file = nav_dir + r'\transf_mat_{}_{}'.format(subj, id_extra)
         else:
-            output_file = nav_dir + 'transf_mat_%s' % subj
+            output_file = nav_dir + r'\transf_mat_{}'.format(subj)
 
         coords = lc.load_nexstim(coord_file)
         # red, green, blue, maroon (dark red),

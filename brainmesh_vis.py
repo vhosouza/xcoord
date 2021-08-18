@@ -3,7 +3,6 @@ import pyacvd
 import os
 import pyvista
 import numpy as np
-import Trekker
 
 
 class Brain:
@@ -393,111 +392,18 @@ def add_line(renderer, p1, p2, color=[0.0, 0.0, 1.0]):
     renderer.AddActor(actor)
 
 
-def visualizeTracks(renderer, renderWindow, tracker, seed, replace, user_matrix):
-    # Input the seed to the tracker object
-    tracker.seed_coordinates(seed)
-
-    # Run the tracker
-    # This step will create N tracks if seed is a 3xN matrix
-    tractogram = tracker.run()
-
-    # Convert the first track to a vtkActor, i.e., tractogram[0] is the track
-    # computed for the first seed
-    trkActor = trk2vtkActor(tractogram[0], replace)
-
-    matrix_vtk = vtk.vtkMatrix4x4()
-
-    for row in range(0, 4):
-        for col in range(0, 4):
-            matrix_vtk.SetElement(row, col, user_matrix[row, col])
-
-    trkActor.SetUserMatrix(matrix_vtk)
-
-    renderer.AddActor(trkActor)
-    renderWindow.Render()
-
-    return
-
-
-# This function converts a single track to a vtkActor
-def trk2vtkActor(trk, replace):
-    # convert trk to vtkPolyData
-    trk = np.transpose(np.asarray(trk))
-    numberOfPoints = trk.shape[0]
-
-    points = vtk.vtkPoints()
-    lines = vtk.vtkCellArray()
-
-    colors = vtk.vtkFloatArray()
-    colors.SetNumberOfComponents(4)
-    colors.SetName("tangents")
-
-    k = 0
-    lines.InsertNextCell(numberOfPoints)
-    for j in range(numberOfPoints):
-        points.InsertNextPoint(trk[j, :])
-        lines.InsertCellPoint(k)
-        k = k + 1
-
-        if j < (numberOfPoints - 1):
-            direction = trk[j + 1, :] - trk[j, :]
-            direction = direction / np.linalg.norm(direction)
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
-        else:
-            colors.InsertNextTuple(np.abs([direction[0], direction[1], direction[2], 1]))
-
-    trkData = vtk.vtkPolyData()
-    trkData.SetPoints(points)
-    trkData.SetLines(lines)
-    trkData.GetPointData().SetScalars(colors)
-
-    # make it a tube
-    trkTube = vtk.vtkTubeFilter()
-    trkTube.SetRadius(0.1)
-    trkTube.SetNumberOfSides(4)
-    trkTube.SetInputData(trkData)
-    trkTube.Update()
-
-    if replace:
-        transx, transy, transz, rotx, roty, rotz = replace
-        # create a transform that rotates the stl source
-        transform = vtk.vtkTransform()
-        transform.PostMultiply()
-        transform.RotateX(rotx)
-        transform.RotateY(roty)
-        transform.RotateZ(rotz)
-        transform.Translate(transx, transy, transz)
-
-        transform_filt = vtk.vtkTransformPolyDataFilter()
-        transform_filt.SetTransform(transform)
-        transform_filt.SetInputConnection(trkTube.GetOutputPort())
-        transform_filt.Update()
-
-    # mapper
-    trkMapper = vtk.vtkPolyDataMapper()
-    trkMapper.SetInputData(trkTube.GetOutput())
-
-    # actor
-    trkActor = vtk.vtkActor()
-    trkActor.SetMapper(trkMapper)
-
-    return trkActor
-
-
 def main():
     SHOW_AXES = True
     AFFINE_IMG = True
     NO_SCALE = True
 
-    data_dir = b'C:\Users\deoliv1\OneDrive - Aalto University\data\dti_navigation\juuso'
+    # data_dir = b'C:\Users\img_folder'  #PUT YOUR IMAGE DIRECTORY HERE
+    data_dir = b'C:\Users\deoliv1\OneDrive - Aalto University\data\dti_navigation\joonas'
 
-    mask_file = b'sub-P0_dwi_mask.nii'
+    mask_file = b'dMRI_mask_T1_space_fixed.nii'
     mask_path = os.path.join(data_dir, mask_file)
 
-    fod_file = b'sub-P0_dwi_FOD.nii'
-    fod_path = os.path.join(data_dir, fod_file)
-
-    img_file = b'sub-P0_T1w_biascorrected.nii'
+    img_file = b'sub-S1_ses-S8741_T1w.nii'
     img_path = os.path.join(data_dir, img_file)
 
     # imagedata = nb.squeeze_image(nb.load(img_path.decode('utf-8')))
@@ -528,47 +434,13 @@ def main():
     iren = vtk.vtkRenderWindowInteractor()
     iren.SetRenderWindow(ren_win)
 
-    # tracker = Trekker.tracker(trk_path)
-    #
-    # repos = [0., 0., 0., 0., 0., 0.]
-    # brain_actor = load_stl(brain_path, ren, opacity=0.5, replace=repos, user_matrix=np.identity(4))
-    #
-    # # Add axes to scene origin
-    # if SHOW_AXES:
-    #     add_line(ren, [0, 0, 0], [150, 0, 0], color=[1.0, 0.0, 0.0])
-    #     add_line(ren, [0, 0, 0], [0, 150, 0], color=[0.0, 1.0, 0.0])
-    #     add_line(ren, [0, 0, 0], [0, 0, 150], color=[0.0, 0.0, 1.0])
-    #
-    # # Show tracks
-    # repos_trk = [0., 0., 0., 0., 90., 0.]
-    # for i in range(5):
-    #     seed = np.array([[-8.49, -8.39, 2.5]])
-    #     visualizeTracks(ren, ren_win, tracker, seed, replace=repos_trk, user_matrix=np.linalg.inv(affine))
-
     if SHOW_AXES:
         add_line(ren, [0, 0, 0], [150, 0, 0], color=[1.0, 0.0, 0.0])
         add_line(ren, [0, 0, 0], [0, 150, 0], color=[0.0, 1.0, 0.0])
         add_line(ren, [0, 0, 0], [0, 0, 150], color=[0.0, 0.0, 1.0])
 
-    # Show tracks
-    # tracker = Trekker.initialize(fod_path)
-    # repos_trk = [0., 0., 0., 0., 0., 0.]
-    # for i in range(5):
-    #     seed = np.array([[-8.49, -8.39, 2.5]])
-    #     visualizeTracks(ren, ren_win, tracker, seed, replace=repos_trk, user_matrix=np.linalg.inv(np.identity(4)))
-
     # Assign actor to the renderer
     brain_actor, peel = Brain(img_path, mask_path).get_actor(14)
-
-    # writer = vtk.vtkXMLPolyDataWriter()
-    # writer.SetFileName("peel.vtp")
-    # writer.SetInputData(peel)
-    # writer.Write()
-
-    # stlWriter = vtk.vtkSTLWriter()
-    # stlWriter.SetFileName("peel.stl")
-    # stlWriter.SetInputData(peel)
-    # stlWriter.Write()
 
     ren.AddActor(brain_actor)
 

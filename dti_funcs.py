@@ -4,6 +4,7 @@ import Trekker
 import vtk
 import numpy as np
 import time
+import psutil
 
 
 def start_trekker(filename, params):
@@ -22,14 +23,16 @@ def start_trekker(filename, params):
     return trekker
 
 
-def simple_direction(trk_n):
+def simple_direction(trk_n, alpha=255):
     # trk_d = np.diff(trk_n, axis=0, append=2*trk_n[np.newaxis, -1, :])
     trk_d = np.diff(trk_n, axis=0, append=trk_n[np.newaxis, -2, :])
     trk_d[-1, :] *= -1
     # check that linalg norm makes second norm
     # https://stackoverflow.com/questions/21030391/how-to-normalize-an-array-in-numpy
     direction = 255 * np.absolute((trk_d / np.linalg.norm(trk_d, axis=1)[:, None]))
+    direction = np.hstack([direction, alpha*np.ones([direction.shape[0], 1])])
     return direction.astype(int)
+    # return direction
 
 
 def compute_tubes_vtk(trk, direction):
@@ -38,7 +41,7 @@ def compute_tubes_vtk(trk, direction):
     lines = vtk.vtkCellArray()
 
     colors = vtk.vtkUnsignedCharArray()
-    colors.SetNumberOfComponents(3)
+    colors.SetNumberOfComponents(4)
 
     k = 0
     lines.InsertNextCell(numb_points)
@@ -96,18 +99,18 @@ def tracts_computation(trk_list, root, n_tracts):
     print("Compute tubes: {:.2f} ms".format(1e3*duration))
 
     start_time = time.time()
-    root = tracts_root(out_list, root, n_tracts)
+    root = tracts_root(out_list)
     duration = time.time() - start_time
     print("Compute root: {:.2f} ms".format(1e3*duration))
 
     return root
 
 
-def tracts_computation_noroot(trk_list):
+def tracts_computation_noroot(trk_list, alpha=255):
     # Transform tracts to array
     trk_arr = [np.asarray(trk_n).T if trk_n else None for trk_n in trk_list]
     # Compute the directions
-    trk_dir = [simple_direction(trk_n) for trk_n in trk_arr]
+    trk_dir = [simple_direction(trk_n, alpha=alpha) for trk_n in trk_arr]
     # Compute the vtk tubes
     out_list = [compute_tubes_vtk(trk_arr_n, trk_dir_n) for trk_arr_n, trk_dir_n in zip(trk_arr, trk_dir)]
 
@@ -158,3 +161,47 @@ def multi_block(tracker, seed, n_threads):
 
     return branch
 
+
+def multi_block_uncertainty(trekker, seed, n_threads, n):
+    trekker.seed_coordinates(np.repeat(seed, n_threads, axis=0))
+    alpha = (n - 1) * (255 - 51) / (10 - 1) + 51
+    trekker.minFODamp(n*0.01)
+    trekker.dataSupportExponent(n*0.1)
+    trk_list = trekker.run()
+    out_list = tracts_computation_noroot(trk_list, alpha)
+    branch = tracts_root(out_list)
+
+    return branch
+
+
+def set_trekker_parameters(trekker, params):
+    """Set all user-defined parameters for tractography computation using the Trekker library
+
+    :param trekker: Trekker instance
+    :type trekker: Trekker.T
+    :param params: Dictionary containing the parameters values to set in Trekker. Initial values are in constants.py
+    :type params: dict
+    :return: List containing the Trekker instance and number of threads for parallel processing in the computer
+    :rtype: list
+    """
+    trekker.seed_maxTrials(params['seed_max'])
+    # trekker.stepSize(params['step_size'])
+    trekker.minFODamp(params['min_fod'])
+    # trekker.probeQuality(params['probe_quality'])
+    # trekker.maxEstInterval(params['max_interval'])
+    # trekker.minRadiusOfCurvature(params['min_radius_curv'])
+    # trekker.probeLength(params['probe_length'])
+    trekker.writeInterval(params['write_interval'])
+    trekker.maxLength(params['max_lenth'])
+    trekker.minLength(params['min_lenth'])
+    trekker.maxSamplingPerStep(params['max_sampling_step'])
+
+    # check number if number of cores is valid in configuration file,
+    # otherwise use the maximum number of threads which is usually 2*N_CPUS
+    n_threads = 2 * psutil.cpu_count()
+    if isinstance((params['numb_threads']), int) and params['numb_threads'] <= 2*const.N_CPU:
+        n_threads = params['numb_threads']
+
+    trekker.numberOfThreads(n_threads)
+    # print("Trekker config updated: n_threads, {}; seed_max, {}".format(n_threads, params['seed_max']))
+    return trekker, n_threads

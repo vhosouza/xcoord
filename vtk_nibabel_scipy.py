@@ -94,7 +94,7 @@ id_smooth = True
 id_save = False
 
 # get the pial surface
-data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
+data_dir = b'C:\Users\deoliv1\OneDrive - Aalto University\data\dti_navigation\juuso'
 brainmask_path = os.path.join(data_dir, b'c2sub-P0_T1w_biascorrected.nii')
 # brainmask_path = os.path.join(data_dir, b'c1sub-P0_T1w_biascorrected.nii')
 brainmask = nibabel.load(brainmask_path.decode('utf-8'))

@@ -20,7 +20,7 @@ import numpy as np
 # Transformations from nexstim to mri space is: swap y and z coords, flip x coord, then apply affine from image header
 
 
-def coord_change(coord, img_shape, affine=np.identity(4), flipxyz=[False, False, False], axis_order=[0, 1, 2]):
+def coord_change(coord, img_shape=[0, 0, 0], affine=np.identity(4), flipxyz=[False, False, False], axis_order=[0, 1, 2]):
     flipx, flipy, flipz = flipxyz
 
     # swap axis

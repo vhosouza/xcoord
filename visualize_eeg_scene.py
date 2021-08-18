@@ -50,28 +50,27 @@ def main():
     # flipx = [False, False, False]
 
     # default folder and subject
-    subj = 'S5'  # 1 - 9
+    # subj = 's03'
+    subj = 'EEGTA04'
     id_extra = False  # 8, 9, 10, 12, False
-    data_dir = r'P:\tms_eeg\mTMS\projects\2016 Lateral ppTMS M1\E-fields'
-    simnibs_dir = os.path.join(data_dir, 'simnibs', 'm2m_ppM1_{}_nc'.format(subj))
-
-    if id_extra and subj == 'S1':
-        subj_id = '{}_{}'.format(subj, id_extra)
-    else:
-        subj_id = '{}'.format(subj)
-
-    nav_dir = os.path.join(data_dir, 'nav_coordinates', 'ppM1_{}'.format(subj_id))
+    # data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
+    data_dir = r'P:\tms_eeg\mTMS\projects\2019 EEG-based target automatization\Analysis\EEG electrode transformation'
 
     # filenames
-    coil_file = os.path.join(os.environ['OneDrive'], 'data', 'nexstim_coord', 'magstim_fig8_coil.stl')
-
-    coord_file = os.path.join(nav_dir, 'ppM1_eximia_{}.txt'.format(subj_id))
-
-    img_file = os.path.join(data_dir, r'mri\ppM1_{}\ppM1_{}.nii'.format(subj, subj))
-    brain_file = os.path.join(simnibs_dir, 'wm.stl')
-    skin_file = os.path.join(simnibs_dir, 'skin.stl')
-
-    output_file = os.path.join(nav_dir, 'transf_mat_{}'.format(subj_id))
+    # coil_file = data_dir + 'magstim_fig8_coil.stl'
+    coil_file = os.environ['OneDrive'] + '\\data\\nexstim_coord\\magstim_fig8_coil.stl'
+    if id_extra:
+        coord_file = data_dir + 'ppM1_eximia_%s_%d.txt' % (subj, id_extra)
+    else:
+        coord_file = nav_dir + 'ppM1_eximia_%s.txt' % subj
+    # img_file = data_subj + subj + '.nii'
+    img_file = data_dir + 'mri\\ppM1_%s\\ppM1_%s.nii' % (subj, subj)
+    brain_file = simnibs_dir + "wm.stl"
+    skin_file = simnibs_dir + "skin.stl"
+    if id_extra:
+        output_file = nav_dir + 'transf_mat_%s_%d' % (subj, id_extra)
+    else:
+        output_file = nav_dir + 'transf_mat_%s' % subj
 
     coords = lc.load_nexstim(coord_file)
     # red, green, blue, maroon (dark red),
@@ -260,9 +259,6 @@ def main():
         # Translate coil loc coordinate to coil bottom
         # repos = [0., 0., 5.5, 0., 0., 180.]
         repos = [0., 0., 0., 0., 0., 180.]
-        # SimNIBS coil orientation requires 180deg around Y
-        # Ry = tf.rotation_matrix(np.pi, [0, 1, 0], [0, 0, 0])
-        # transf_matrix = transf_matrix @ Ry
         act_coil = load_stl(coil_file, ren, replace=repos, user_matrix=transf_matrix, opacity=.3)
 
     if SHOW_PLANE:

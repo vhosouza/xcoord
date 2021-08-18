@@ -51,30 +51,14 @@ def main():
     # flipx = [False, False, False]
 
     # default folder and subject
-    # subj = 's03'
     # for Bert image use the translation in the base_affine (fall-back)
     subj_list = ['VictorSouza', 'JaakkoNieminen', 'AinoTervo',
                  'JuusoKorhonen', 'BaranAydogan', 'AR', 'Bert']
     subj = 0
-    id_extra = False  # 8, 9, 10, 12, False
-    # data_dir = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\'
+
     data_dir = os.environ.get('OneDrive') + r'\vh\eventos\sf 2019\mri_science_factory\{}'.format(subj_list[subj])
-    # data_dir = os.environ.get('OneDrive') + r'\data\motor_mapping\analysis\20200419\lmm_notebook_clean'
-    # data_subj = data_dir + subj + '\\'
-    # simnibs_dir = data_dir + r'\simnibs\\m2m_ppM1_%s_nc\\' % subj
-    # if id_extra:
-    #     nav_dir = data_dir + 'nav_coordinates\\ppM1_%s_%d\\' % (subj, id_extra)
-    # else:
-    #     nav_dir = data_dir + 'nav_coordinates\\ppM1_%s\\' % subj
 
     # filenames
-    # coil_file = data_dir + 'magstim_fig8_coil.stl'
-    # coil_file = os.environ['OneDriveConsumer'] + '\\data\\nexstim_coord\\magstim_fig8_coil.stl'
-    # if id_extra:
-    #     coord_file = nav_dir + 'ppM1_eximia_%s_%d.txt' % (subj, id_extra)
-    # else:
-    #     coord_file = nav_dir + 'ppM1_eximia_%s.txt' % subj
-    # img_file = data_subj + subj + '.nii'
     img_file = data_dir + r'\{}.nii'.format(subj_list[subj])
     brain_file = data_dir + r'\gm.stl'
     skin_file = data_dir + r'\gm_sn.stl'
@@ -87,11 +71,6 @@ def main():
         other_file = data_dir + r'\gm.ply'
     else:
         other_file = data_dir + r'\gm.stl'
-
-    # if id_extra:
-    #     output_file = nav_dir + 'transf_mat_%s_%d' % (subj, id_extra)
-    # else:
-    #     output_file = nav_dir + 'transf_mat_%s' % subj
 
     # coords = lc.load_nexstim(coord_file)
     # red, green, blue, maroon (dark red),
@@ -142,11 +121,16 @@ def main():
     ren = vtk.vtkRenderer()
     ren.SetActiveCamera(camera)
     ren.ResetCamera()
+    ren.SetUseDepthPeeling(1)
+    ren.SetOcclusionRatio(0.1)
+    ren.SetMaximumNumberOfPeels(100)
     camera.Dolly(1.5)
 
     ren_win = vtk.vtkRenderWindow()
     ren_win.AddRenderer(ren)
     ren_win.SetSize(800, 800)
+    ren_win.SetMultiSamples(0)
+    ren_win.SetAlphaBitPlanes(1)
 
     # create a renderwindowinteractor
     iren = vtk.vtkRenderWindowInteractor()
