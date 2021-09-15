@@ -46,7 +46,7 @@ def mri2inv(imagedata, affine=None):
 
     # convert from invesalius 3D to RAS+ space
     mri2inv_mat = np.linalg.inv(affine.copy())
-    mri2inv_mat[1, 3] -= pix_dim[1] * img_shape[1]
+    mri2inv_mat[1, 3] -= pix_dim[1] * (img_shape[1] - 1)
 
     return mri2inv_mat
 
@@ -119,7 +119,7 @@ def inv2mri(imagedata, affine=None):
         affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
 
     mri2inv = np.linalg.inv(affine.copy())
-    mri2inv[1, -1] -= pix_dim[1] * img_shape[1]
+    mri2inv[1, -1] -= pix_dim[1] * (img_shape[1] - 1)
     inv2mri_mat = np.linalg.inv(mri2inv)
 
     return inv2mri_mat
