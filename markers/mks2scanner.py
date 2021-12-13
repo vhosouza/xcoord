@@ -10,19 +10,19 @@ def main():
     FIX_MKS = False
     SAVE_FIX = False
     SAVE_SCAN = True
-    RECOMPUTE_SEED = False
+    RECOMPUTE_SEED = True
 
     SEED_OFFSET = 25
 
     data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\joonas'
 
-    filenames = {'T1': 'sub-S1_ses-S8741_T1w', 'MKS': 'markers_20210304_m1',
-                 'MKS_CORR': 'markers_20210304_m1', 'ACT': 'trekkerACTlabels'}
+    filenames = {'T1': 'sub-S1_ses-S8741_T1w', 'MKS': 'markers_20210304_rep_left_m1_dlpfc_broca_V1_final_labeled',
+                 'MKS_CORR': 'markers_20210304_rep_left_m1_dlpfc_broca_V1_final_labeled', 'ACT': 'trekkerACTlabels'}
 
     img_path = os.path.join(data_dir, filenames['T1'] + '.nii')
     act_path = os.path.join(data_dir, filenames['ACT'] + '.nii')
-    mkss_path = os.path.join(data_dir, filenames['MKS'] + '.mks')
-    mkss_save_path = os.path.join(data_dir, filenames['MKS'] + '_scanner.mkss')
+    mkss_path = os.path.join(data_dir, filenames['MKS'] + '.mkss')
+    mkss_save_path = os.path.join(data_dir, filenames['MKS'] + '_scanner_fixedgrid.mkss')
 
     if FIX_MKS:
         mks_corrupt_path = os.path.join(data_dir, filenames['MKS_CORR'] + '.mks')

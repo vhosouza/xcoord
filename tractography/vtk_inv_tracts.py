@@ -5,38 +5,28 @@ import os
 
 import nibabel as nb
 import numpy as np
-import transformations as tf
+import external.transformations as tf
 import Trekker
 import vtk
 import time
-import psutil
-import dti_funcs as dti
 
 
 def main():
     SHOW_AXES = True
     AFFINE_IMG = True
     NO_SCALE = True
-    n_tracts = 240
-    n_threads = 2*psutil.cpu_count()
 
-    data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\baran\pilot_20200131'
-    data_dir = data_dir.encode('utf-8')
-    # FOD_path = 'Baran_FOD.nii'
-    # trk_path = os.path.join(data_dir, FOD_path)
-
-    # data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
+    data_dir = b'C:\Users\deoliv1\OneDrive - Aalto University\data\dti_navigation\juuso'
     stl_path = b'wm_orig_smooth_world.stl'
     brain_path = os.path.join(data_dir, stl_path)
 
-    # data_dir = b'C:\Users\deoliv1\OneDrive\data\dti'
-    stl_path = b'gm.stl'
+    stl_path = b'wm.stl'
     brain_inv_path = os.path.join(data_dir, stl_path)
 
-    nii_path = b'Baran_FOD.nii'
+    nii_path = b'sub-P0_dwi_FOD.nii'
     trk_path = os.path.join(data_dir, nii_path)
 
-    nii_path = b'Baran_T1_inFODspace.nii'
+    nii_path = b'sub-P0_T1w_biascorrected.nii'
     img_path = os.path.join(data_dir, nii_path)
 
     imagedata = nb.squeeze_image(nb.load(img_path.decode('utf-8')))
@@ -69,7 +59,6 @@ def main():
     iren = vtk.vtkRenderWindowInteractor()
     iren.SetRenderWindow(ren_win)
 
-    start_time = time.time()
     tracker = Trekker.initialize(trk_path)
     tracker.seed_maxTrials(1)
     tracker.minFODamp(0.1)
@@ -77,19 +66,16 @@ def main():
     tracker.maxLength(200)
     tracker.minLength(20)
     tracker.maxSamplingPerStep(100)
-    tracker.numberOfThreads(n_threads)
-    duration = time.time() - start_time
-    print("Initialize Trekker: {:.2f} ms".format(1e3*duration))
 
     repos = [0., 0., 0., 0., 0., 0.]
     brain_actor = load_stl(brain_inv_path, ren, opacity=.1, colour=[1.0, 1.0, 1.0], replace=repos, user_matrix=np.identity(4))
     bds = brain_actor.GetBounds()
     print("Y length: {} --- Bounds: {}".format(bds[3] - bds[2], bds))
 
-    # repos = [0., 0., 0., 0., 0., 0.]
-    # brain_actor_mri = load_stl(brain_path, ren, opacity=.1, colour=[0.0, 1.0, 0.0], replace=repos, user_matrix=np.linalg.inv(affine))
-    # bds = brain_actor_mri.GetBounds()
-    # print("Y length: {} --- Bounds: {}".format(bds[3] - bds[2], bds))
+    repos = [0., 0., 0., 0., 0., 0.]
+    brain_actor_mri = load_stl(brain_path, ren, opacity=.1, colour=[0.0, 1.0, 0.0], replace=repos, user_matrix=np.linalg.inv(affine))
+    bds = brain_actor_mri.GetBounds()
+    print("Y length: {} --- Bounds: {}".format(bds[3] - bds[2], bds))
 
     repos = [0., 256., 0., 0., 0., 0.]
     # brain_inv_actor = load_stl(brain_inv_path, ren, colour="SkinColor", opacity=0.5, replace=repos, user_matrix=np.linalg.inv(affine))
@@ -116,46 +102,14 @@ def main():
         for col in range(0, 4):
             matrix_vtk.SetElement(row, col, final_matrix[row, col])
 
-    root = vtk.vtkMultiBlockDataSet()
-    # for i in range(10):
-        # seed = np.array([[-8.49, -8.39, 2.5]])
-    seed = np.array([[27.53, -77.37, 46.42]])
-
-    tracts_actor = dti.single_block(tracker, seed, n_tracts, root, matrix_vtk)
-
-    # out_list = []
-    count_tracts = 0
-    start_time_all = time.time()
-
-    for n in range(round(n_tracts/n_threads)):
-        branch = dti.multi_block(tracker, seed, n_threads)
-        count_tracts += branch.GetNumberOfBlocks()
-
-        # start_time = time.time()
-        # root = dti.tracts_root(out_list, root, n)
-        root.SetBlock(n, branch)
-        # duration = time.time() - start_time
-        # print("Compute root {}: {:.2f} ms".format(n, 1e3*duration))
-
-    duration = time.time() - start_time_all
-    print("Compute multi {}: {:.2f} ms".format(n, 1e3*duration))
-    print("Number computed tracts {}".format(count_tracts))
-    print("Number computed branches {}".format(root.GetNumberOfBlocks()))
-
-    start_time = time.time()
-    tracts_actor = dti.compute_actor(root, matrix_vtk)
-    duration = time.time() - start_time
-    print("Compute actor: {:.2f} ms".format(1e3*duration))
+    for i in range(10):
+        seed = np.array([[-8.49, -8.39, 2.5]])
+        visualizeTracks(ren, ren_win, tracker, seed, user_matrix=matrix_vtk)
 
     # Assign actor to the renderer
     ren.AddActor(brain_actor)
     ren.AddActor(brain_inv_actor)
-
-    start_time = time.time()
-    ren.AddActor(tracts_actor)
-    duration = time.time() - start_time
-    print("Add actor: {:.2f} ms".format(1e3*duration))
-    # ren.AddActor(brain_actor_mri)
+    ren.AddActor(brain_actor_mri)
 
     # Enable user interface interactor
     iren.Initialize()
@@ -243,7 +197,7 @@ def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=Fal
 
 def visualizeTracks(renderer, renderWindow, tracker, seed, user_matrix):
     # Input the seed to the tracker object
-    tracker.seed_coordinates(np.repeat(seed, 200, axis=0))
+    tracker.seed_coordinates(seed)
 
     # Run the tracker
     # This step will create N tracks if seed is a 3xN matrix
@@ -348,14 +302,3 @@ def add_line(renderer, p1, p2, color=[0.0, 0.0, 1.0]):
 
 if __name__ == '__main__':
     main()
-
-# 240 tracts in a single block/run
-# Seed coordinates: 0.00 ms
-# Run Trekker: 1154.00 ms
-# Tracts to array: 2.00 ms
-# Tracts directions: 12.00 ms
-# Compute tubes: 59.00 ms
-# Compute root: 1.00 ms
-# Tracts computation: 80.00 ms
-# Compute actor: 0.00 ms
-# Add actor: 0.00 ms

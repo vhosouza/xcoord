@@ -6,8 +6,8 @@ import os
 import numpy as np
 
 import image_funcs as imf
-import nexstim2mri as n2m
-import vis_funcs as vf
+from markers import nexstim2mri as n2m
+from visualization import vis_funcs as vf
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
     reorder = [0, 2, 1]
     flipx = [True, False, False]
 
-    data_dir = r'P:\tms_eeg\mTMS\projects\2019 EEG-based target automatization\Analysis\EEG electrode transformation'
+    data_dir = r'P:\tms_eeg\mTMS\projects\2019 EEG-based target automatization\Analysis\EEG electrode transformation\Locations of interest in Nexstim coords'
 
     filenames = {'T1': 'EEGTA04', 'EEG': 'EEGTA04_electrode_locations_Nexstim',
                  'TARGET': 'EEGTA04_preSMA_target', 'SAVE_EEG': 'EEGTA04_electrode_locations_MRI'}

@@ -22,8 +22,7 @@ from scipy import io
 import transformations as tf
 import vtk
 
-import load_coords as lc
-import nexstim2mri as n2m
+from markers import nexstim2mri as n2m, load_coords as lc
 
 
 def main():

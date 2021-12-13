@@ -135,15 +135,29 @@ def add_marker(coord, ren, color, radius, opacity=1.):
     return actor
 
 
-def create_window(size=(800, 800)):
+def create_window(size=(800, 800), background=(0., 0., 0.),
+                  camera_cfg={'azimuth': 90, 'elevation': 45, 'focal_point': 3*[0], 'position': (0, 750, 0)}):
+
+    camera = vtk.vtkCamera()
+    camera.SetPosition(camera_cfg['position'])
+    camera.SetFocalPoint(camera_cfg['focal_point'])
+    camera.SetViewUp(0, 0, 1)
+    camera.ComputeViewPlaneNormal()
+    camera.Azimuth(camera_cfg['azimuth'])
+    camera.Elevation(camera_cfg['elevation'])
+
     ren = vtk.vtkRenderer()
     ren.SetUseDepthPeeling(1)
     ren.SetOcclusionRatio(0.1)
     ren.SetMaximumNumberOfPeels(100)
+    ren.SetBackground(background)
+    ren.SetActiveCamera(camera)
+    ren.ResetCamera()
+    camera.Dolly(1.5)
 
     ren_win = vtk.vtkRenderWindow()
     ren_win.AddRenderer(ren)
-    ren_win.SetSize(*size)
+    ren_win.SetSize(size)
     ren_win.SetMultiSamples(0)
     ren_win.SetAlphaBitPlanes(1)
 
@@ -152,3 +166,17 @@ def create_window(size=(800, 800)):
     iren.SetRenderWindow(ren_win)
 
     return ren, ren_win, iren
+
+
+def export_window_png(filename, ren_win):
+    window_to_image = vtk.vtkWindowToImageFilter()
+    window_to_image.SetInput(ren_win)
+    window_to_image.SetScale(1)
+    window_to_image.SetInputBufferTypeToRGBA()
+    window_to_image.ReadFrontBufferOff()
+    window_to_image.Update()
+
+    writer = vtk.vtkPNGWriter()
+    writer.SetFileName(filename)
+    writer.SetInputConnection(window_to_image.GetOutputPort())
+    writer.Write()

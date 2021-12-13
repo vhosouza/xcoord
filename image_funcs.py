@@ -3,7 +3,7 @@
 import vtk
 import numpy as np
 import csv
-import transformations as tf
+import external.transformations as tf
 import nibabel as nb
 import pandas as pd
 import scipy.io as sio
@@ -34,21 +34,6 @@ def load_image(filename, closest=True):
 
     # print("Affine no scale: {0}\n".format(affine))
     return imagedata, affine_noscale
-
-
-def mri2inv(imagedata, affine=None):
-    pix_dim = imagedata.header.get_zooms()
-    img_shape = imagedata.header.get_data_shape()
-
-    if affine is None:
-        scale, shear, angs, trans, persp = tf.decompose_matrix(imagedata.affine)
-        affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
-
-    # convert from invesalius 3D to RAS+ space
-    mri2inv_mat = np.linalg.inv(affine.copy())
-    mri2inv_mat[1, 3] -= pix_dim[1] * img_shape[1]
-
-    return mri2inv_mat
 
 
 def mks2mkss(coord_list, orient_list, seed_list, user_matrix=None,
@@ -110,6 +95,35 @@ def array2scanner(coord_list, orient_list, user_matrix=None):
     return coil_pos_scan
 
 
+def mri2inv(imagedata, affine=None):
+    """
+    Affine transformation from world to InVesalius space.
+
+    The affine from image header converts from the voxel to the scanner space. Thus, the inverse of the affine converts
+    from the scanner to the voxel space.
+    InVesalius and voxel spaces are otherwise identical, but InVesalius space has a reverted y-axis
+    (increasing y-coordinate moves posterior in InVesalius space, but anterior in the voxel space).
+
+    For instance, if the size of the voxel image is 256 x 256 x 160, the y-coordinate 0 in
+    InVesalius space corresponds to the y-coordinate 255 in the voxel space.
+
+    :param position: a vector of 3 coordinates (x, y, z) in InVesalius space.
+    :return: a vector of 3 coordinates in the voxel space
+    """
+    pix_dim = imagedata.header.get_zooms()
+    img_shape = imagedata.header.get_data_shape()
+
+    if affine is None:
+        scale, shear, angs, trans, persp = tf.decompose_matrix(imagedata.affine)
+        affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
+
+    # convert from invesalius 3D to RAS+ space
+    mri2inv_mat = np.linalg.inv(affine.copy())
+    mri2inv_mat[1, 3] = mri2inv_mat[1, -1] - pix_dim[1]*(img_shape[1] - 1)
+
+    return mri2inv_mat
+
+
 def inv2mri(imagedata, affine=None):
     pix_dim = imagedata.header.get_zooms()
     img_shape = imagedata.header.get_data_shape()
@@ -119,7 +133,7 @@ def inv2mri(imagedata, affine=None):
         affine = tf.compose_matrix(scale=None, shear=shear, angles=angs, translate=trans, perspective=persp)
 
     mri2inv = np.linalg.inv(affine.copy())
-    mri2inv[1, -1] -= pix_dim[1] * img_shape[1]
+    mri2inv[1, -1] = mri2inv[1, -1] - pix_dim[1]*(img_shape[1] - 1)
     inv2mri_mat = np.linalg.inv(mri2inv)
 
     return inv2mri_mat
@@ -226,6 +240,10 @@ def load_mks_corrupt(filename):
         content = [row for row in reader]
 
     return content
+
+
+def load_mkss(filename):
+    return pd.read_csv(filename, delimiter='\t', skiprows=1)
 
 
 def fix_mks_corrupt(content, problems):
@@ -353,19 +371,16 @@ def create_grid(xy_range, z_range, z_offset, spacing):
 def grid_offset(data, coord_list_w_tr, affine=np.identity(4)):
     # convert to int so coordinates can be used as indices in the MRI image space
     coord_list_w_tr_mri = np.linalg.inv(affine) @ coord_list_w_tr
-    coord_list_w_tr_mri = coord_list_w_tr_mri[:3, :].T.astype(int)
+    coord_list_w_tr_mri_int = coord_list_w_tr_mri[:3, :].T.astype(int)
 
     # extract the first occurrence of a specific label from the MRI image
     try:
-        labs = data[coord_list_w_tr_mri[..., 0], coord_list_w_tr_mri[..., 1], coord_list_w_tr_mri[..., 2]]
-        lab_first = np.argmax(labs == 1)
-        if labs[lab_first] == 1:
-            pt_found = np.append(coord_list_w_tr_mri[lab_first, :], 1.).reshape([4, 1])
-            # convert coordinate back to scanner space
-            pt_found_w = affine @ pt_found
-            pt_found_w = pt_found_w[:3, 0]
-        else:
+        labs = data[coord_list_w_tr_mri_int[..., 0], coord_list_w_tr_mri_int[..., 1], coord_list_w_tr_mri_int[..., 2]]
+        lab_first = np.where(labs == 1)
+        if not lab_first:
             pt_found_w = None
+        else:
+            pt_found_w = coord_list_w_tr[:, lab_first[0][0]][:3]
     except IndexError:
         print("Warning: Index error when computing seed")
         pt_found_w = (1., 1., 1)
