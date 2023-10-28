@@ -5,7 +5,7 @@ import vtk
 import numpy as np
 
 
-def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=False, replace=False, user_matrix=np.identity(4)):
+def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=False, replace=False, user_matrix=np.identity(4), scale=1):
     vtk_colors = vtk.vtkNamedColors()
     vtk_colors.SetColor("SkinColor", [233, 200, 188, 255])
     vtk_colors.SetColor("BkgColor", [51, 77, 102, 255])
@@ -88,6 +88,7 @@ def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=Fal
             matrix_vtk.SetElement(row, col, user_matrix[row, col])
 
     actor.SetUserMatrix(matrix_vtk)
+    actor.SetScale(scale)
     # actor_outline.SetUserMatrix(matrix_vtk)
 
     # Assign actor to the renderer
@@ -180,3 +181,43 @@ def export_window_png(filename, ren_win):
     writer.SetFileName(filename)
     writer.SetInputConnection(window_to_image.GetOutputPort())
     writer.Write()
+
+
+def create_mesh(data, color, renderer):
+    points = vtk.vtkPoints()
+    triangles = vtk.vtkCellArray()
+    polydata = vtk.vtkPolyData()
+
+    # convert from matlab to python indexing
+    data['e'] = data['e'] - 1
+    # convert to mm
+    data['p'] = data['p']*1000
+
+    for i in range(len(data['e'])):
+        id1 = points.InsertNextPoint(data['p'][data['e'][i, 0], :])
+        id2 = points.InsertNextPoint(data['p'][data['e'][i, 1], :])
+        id3 = points.InsertNextPoint(data['p'][data['e'][i, 2], :])
+
+        triangle = vtk.vtkTriangle()
+        triangle.GetPointIds().SetId(0, id1)
+        triangle.GetPointIds().SetId(1, id2)
+        triangle.GetPointIds().SetId(2, id3)
+
+        triangles.InsertNextCell(triangle)
+
+    polydata.SetPoints(points)
+    polydata.SetPolys(triangles)
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polydata)
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color)
+    actor.SetScale(1)
+
+    renderer.AddActor(actor)
+
+    return actor
+
+

@@ -36,6 +36,33 @@ def load_image(filename, closest=True):
     return imagedata, affine_noscale
 
 
+def img2memmap(group):
+    """
+    From a nibabel image data creates a memmap file in the temp folder and
+    returns it and its related filename.
+    """
+
+    # temp_file = tempfile.mktemp()
+
+    data = group.get_data()
+    # Normalize image pixel values and convert to int16
+    #  data = imgnormalize(data)
+
+    # Convert RAS+ to default InVesalius orientation ZYX
+    data = np.swapaxes(data, 0, 2)
+    data = np.fliplr(data)
+
+    # matrix = np.memmap(temp_file, mode="w+", dtype=np.int16, shape=data.shape)
+    # matrix[:] = data[:]
+    # matrix.flush()
+    matrix = data
+
+    scalar_range = np.amin(matrix), np.amax(matrix)
+
+    # return matrix, scalar_range, temp_file
+    return matrix, scalar_range
+
+
 def mks2mkss(coord_list, orient_list, seed_list, user_matrix=None,
              recompute_seed={'recompute': False, 'seed_offset': 25, 'act_data': None, 'affine': None}):
 
@@ -413,3 +440,18 @@ def grid_offset_inv(data, coord_list_w_tr, img_shift):
     # pt_found_tr = pt_found_tr[:3, 0, np.newaxis].T
 
     return pt_found_inv
+
+
+def load_mesh_mat(filename):
+    mat = sio.loadmat(filename)
+    vars = sio.whosmat(filename)
+
+    model_data = mat[vars[0][0]]
+
+    # create a dictionary from the data
+    model_aux = [dict(zip(model_data.dtype.names, x)) for x in model_data[0]]
+    model = {}
+    for n in model_aux:
+        model.update(n)
+
+    return model
