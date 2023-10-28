@@ -5,13 +5,12 @@ import os
 
 import nibabel as nb
 import numpy as np
-import transformations as tf
+import external.transformations as tf
 import Trekker
 import vtk
 import time
 import psutil
 import dti_funcs as dti
-import nexstim2mri as n2m
 
 
 def main():

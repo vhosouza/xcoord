@@ -35,10 +35,10 @@ def mkVtkIdList(it):
 
 def main():
 
-    save_id = True
+    save_id = False
     subj = 5
     fs_file = 'lh.pial'
-    fs_dir = os.environ['OneDriveConsumer'] + r'\data\nexstim_coord\freesurfer\ppM1_S{}\surf'.format(subj)
+    fs_dir = os.environ['OneDrive'] + r'\data\nexstim_coord\freesurfer\ppM1_S{}\surf'.format(subj)
     fs_path = os.path.join(fs_dir, fs_file)
     filename_save = 'lh.pial_8.stl'
 

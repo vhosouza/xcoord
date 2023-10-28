@@ -5,7 +5,7 @@ import vtk
 import numpy as np
 
 
-def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=False, replace=False, user_matrix=np.identity(4)):
+def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=False, replace=False, user_matrix=np.identity(4), scale=1):
     vtk_colors = vtk.vtkNamedColors()
     vtk_colors.SetColor("SkinColor", [233, 200, 188, 255])
     vtk_colors.SetColor("BkgColor", [51, 77, 102, 255])
@@ -88,6 +88,7 @@ def load_stl(stl_path, ren, opacity=1., visibility=1, position=False, colour=Fal
             matrix_vtk.SetElement(row, col, user_matrix[row, col])
 
     actor.SetUserMatrix(matrix_vtk)
+    actor.SetScale(scale)
     # actor_outline.SetUserMatrix(matrix_vtk)
 
     # Assign actor to the renderer
@@ -135,15 +136,29 @@ def add_marker(coord, ren, color, radius, opacity=1.):
     return actor
 
 
-def create_window(size=(800, 800)):
+def create_window(size=(800, 800), background=(0., 0., 0.),
+                  camera_cfg={'azimuth': 90, 'elevation': 45, 'focal_point': 3*[0], 'position': (0, 750, 0)}):
+
+    camera = vtk.vtkCamera()
+    camera.SetPosition(camera_cfg['position'])
+    camera.SetFocalPoint(camera_cfg['focal_point'])
+    camera.SetViewUp(0, 0, 1)
+    camera.ComputeViewPlaneNormal()
+    camera.Azimuth(camera_cfg['azimuth'])
+    camera.Elevation(camera_cfg['elevation'])
+
     ren = vtk.vtkRenderer()
     ren.SetUseDepthPeeling(1)
     ren.SetOcclusionRatio(0.1)
     ren.SetMaximumNumberOfPeels(100)
+    ren.SetBackground(background)
+    ren.SetActiveCamera(camera)
+    ren.ResetCamera()
+    camera.Dolly(1.5)
 
     ren_win = vtk.vtkRenderWindow()
     ren_win.AddRenderer(ren)
-    ren_win.SetSize(*size)
+    ren_win.SetSize(size)
     ren_win.SetMultiSamples(0)
     ren_win.SetAlphaBitPlanes(1)
 
@@ -152,3 +167,57 @@ def create_window(size=(800, 800)):
     iren.SetRenderWindow(ren_win)
 
     return ren, ren_win, iren
+
+
+def export_window_png(filename, ren_win):
+    window_to_image = vtk.vtkWindowToImageFilter()
+    window_to_image.SetInput(ren_win)
+    window_to_image.SetScale(1)
+    window_to_image.SetInputBufferTypeToRGBA()
+    window_to_image.ReadFrontBufferOff()
+    window_to_image.Update()
+
+    writer = vtk.vtkPNGWriter()
+    writer.SetFileName(filename)
+    writer.SetInputConnection(window_to_image.GetOutputPort())
+    writer.Write()
+
+
+def create_mesh(data, color, renderer):
+    points = vtk.vtkPoints()
+    triangles = vtk.vtkCellArray()
+    polydata = vtk.vtkPolyData()
+
+    # convert from matlab to python indexing
+    data['e'] = data['e'] - 1
+    # convert to mm
+    data['p'] = data['p']*1000
+
+    for i in range(len(data['e'])):
+        id1 = points.InsertNextPoint(data['p'][data['e'][i, 0], :])
+        id2 = points.InsertNextPoint(data['p'][data['e'][i, 1], :])
+        id3 = points.InsertNextPoint(data['p'][data['e'][i, 2], :])
+
+        triangle = vtk.vtkTriangle()
+        triangle.GetPointIds().SetId(0, id1)
+        triangle.GetPointIds().SetId(1, id2)
+        triangle.GetPointIds().SetId(2, id3)
+
+        triangles.InsertNextCell(triangle)
+
+    polydata.SetPoints(points)
+    polydata.SetPolys(triangles)
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputData(polydata)
+
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(color)
+    actor.SetScale(1)
+
+    renderer.AddActor(actor)
+
+    return actor
+
+

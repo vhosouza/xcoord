@@ -8,15 +8,15 @@ import numpy as np
 from scipy.io import savemat
 
 import image_funcs as imf
-import nexstim2mri as n2m
-import vis_funcs as vf
+from markers import nexstim2mri as n2m
+from visualization import vis_funcs as vf
 
 
 def main():
     SHOW_WINDOW = True
     SHOW_AXES = True
     SHOW_EEG = True
-    SAVE_EEG = True
+    SAVE_EEG = False
 
     reorder = [0, 2, 1]
     flipx = [True, False, False]

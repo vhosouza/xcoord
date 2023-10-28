@@ -4,7 +4,7 @@
 import os
 import numpy as np
 import image_funcs as imf
-import vis_funcs as vf
+from visualization import vis_funcs as vf
 
 
 def main():

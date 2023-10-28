@@ -15,7 +15,8 @@ def main():
 
     intensity = [110, 120]
     muscles = ['FCP', 'FRC', 'ADM']
-    subject = [4, 5, 7, 9]
+    # subject = [4, 5, 7, 9]
+    subject = [11]
 
     data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\motor_mapping'
 

@@ -18,12 +18,8 @@ import os
 
 import nibabel as nb
 import numpy as np
-from scipy import io
-import transformations as tf
+import external.transformations as tf
 import vtk
-
-import load_coords as lc
-import nexstim2mri as n2m
 
 
 def main():

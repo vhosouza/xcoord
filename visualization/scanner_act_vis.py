@@ -19,7 +19,9 @@ def main():
 
     data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\joonas'
     # markers_20210304_all_before_rep_scan
-    filenames = {'MKSS': 'markers_20210304_rep_left_m1_dlpfc_broca_V1_final_scan_seed', 'COIL': 'magstim_fig8_coil',
+    # markers_20210304_rep_left_m1_dlpfc_broca_V1_final_scan_seed
+    # markers_20210304_rep_left_m1_dlpfc_broca_V1_final_labeled_scanner
+    filenames = {'MKSS': 'markers_20210304_rep_left_m1_dlpfc_broca_V1_final_labeled_scanner', 'COIL': 'magstim_fig8_coil',
                  'BRAINSIM': 'wm', 'HEADSIM': 'skin', 'ACT': 'trekkerACTlabels',
                  'T1': 'sub-S1_ses-S8741_T1w'}
 
@@ -33,7 +35,7 @@ def main():
     coord_list, orient_list, colour_list, size_list, id_list, seed_list, tg_list = imf.load_mks(mkss_path)
 
     id_fids = ['LEI', 'REI', 'NAI']
-    index_coord = id_list.index('v1-right')
+    index_coord = id_list.index('m1-left')
     index_fids = [id_list.index(n) for n in id_fids]
 
     if COMP_ACT_SEED:
