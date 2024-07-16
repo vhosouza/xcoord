@@ -44,7 +44,7 @@ def img2memmap(group):
 
     # temp_file = tempfile.mktemp()
 
-    data = group.get_data()
+    data = group.get_fdata()
     # Normalize image pixel values and convert to int16
     #  data = imgnormalize(data)
 
@@ -149,6 +149,43 @@ def mri2inv(imagedata, affine=None):
     mri2inv_mat[1, 3] -= pix_dim[1]*(img_shape[1] - 1)
 
     return mri2inv_mat
+
+
+def convert_world_to_voxel(xyz, affine):
+    """
+    Convert a coordinate from the world space ((x, y, z); scanner space; millimeters) to the
+    voxel space ((i, j, k)). This is achieved by multiplying a coordinate by the inverse
+    of the affine transformation.
+
+    More information: https://nipy.org/nibabel/coordinate_systems.html
+
+    :param xyz: a list or array of 3 coordinates (x, y, z) in the world coordinates
+    :param affine: a 4x4 array containing the image affine transformation in homogeneous coordinates
+    :return: a 1x3 array with the point coordinates in image space (i, j, k)
+    """
+    # convert xyz coordinate to 1x4 homogeneous coordinates array
+    xyz_homo = np.hstack((xyz, 1.0)).reshape([4, 1])
+    ijk_homo = np.linalg.inv(affine) @ xyz_homo
+    ijk = ijk_homo.T[np.newaxis, 0, :3]
+
+    return ijk
+
+
+def convert_invesalius_to_voxel(position, spacing, shape):
+    """
+    Convert position from InVesalius space to the voxel space.
+
+    The two spaces are otherwise identical, but InVesalius space has a reverted y-axis
+    (increasing y-coordinate moves posterior in InVesalius space, but anterior in the voxel space).
+
+    For instance, if the size of the voxel image is 256 x 256 x 160, the y-coordinate 0 in
+    InVesalius space corresponds to the y-coordinate 255 in the voxel space.
+
+    :param position: a vector of 3 coordinates (x, y, z) in InVesalius space.
+    :return: a vector of 3 coordinates in the voxel space
+    """
+
+    return np.array((position[0], spacing[1]*(shape[1] - 1) - position[1], position[2]))
 
 
 def inv2mri(imagedata, affine=None):
@@ -455,3 +492,22 @@ def load_mesh_mat(filename):
         model.update(n)
 
     return model
+
+
+def polar_to_cartesian(polar_coords):
+    r = polar_coords[:, 0]
+    theta = polar_coords[:, 1]
+    phi = polar_coords[:, 2]
+
+    x = r * np.sin(theta) * np.cos(phi)
+    y = r * np.sin(theta) * np.sin(phi)
+    z = r * np.cos(theta)
+
+    return np.column_stack((x, y, z))
+
+
+def cartesian_to_polar(xyz, offset_phi=np.pi):
+    r = np.linalg.norm(xyz, axis=1)
+    theta = np.arccos(xyz[:, 2] / r)
+    phi = np.arctan2(xyz[:, 1], xyz[:, 0]) + offset_phi
+    return np.column_stack((r, theta, phi))

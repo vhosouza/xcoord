@@ -3,11 +3,22 @@
 import vtk
 import nibabel as nib
 import os
+import sys
 
 # FOD_path = b"test_fod.nii"
 
-data_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\juuso'
-img_path = 'sub-P0_T1w_biascorrected.nii'
+if sys.platform == "win32":
+    onedrive_path = os.environ.get('OneDrive')
+elif (sys.platform == "darwin") or (sys.platform == "linux"):
+    onedrive_path = os.path.expanduser('~/OneDrive - Aalto University')
+else:
+    onedrive_path = False
+    print("Unsupported platform")
+
+data_dir = os.path.join(onedrive_path, 'projects', 'nexstim', 'data', 'mri')
+img_path = 'GJ_2008_anonym_t1_mpr_ns_sag_1_1_1_mm_20081021180940_2.nii.gz'
+# data_dir = os.path.join(onedrive_path, 'data', 'dti_navigation', 'juuso')
+# img_path = 'sub-P0_T1w_biascorrected.nii'
 full_path = os.path.join(data_dir, img_path)
 img = nib.load(full_path)
 
@@ -16,7 +27,7 @@ img = nib.load(full_path)
 # full_path = os.path.join(data_dir, img_path)
 # img = nib.load(full_path.decode('utf-8'))
 
-img_data = img.get_data()
+img_data = img.get_fdata()
 data_string = img_data.tostring()
 
 dataImporter = vtk.vtkImageImport()
