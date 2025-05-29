@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import numpy as np
 import image_funcs as imf
 from visualization import vis_funcs as vf
@@ -11,7 +12,15 @@ def main():
     SHOW_WINDOW = True
     SHOW_AXES = True
     TRANFORM_SCANNER = True
-    SAVE_SCANNER = True
+    SAVE_SCANNER = False
+
+    if sys.platform == "win32":
+        onedrive_path = os.environ.get('OneDrive')
+    elif (sys.platform == "darwin") or (sys.platform == "linux"):
+        onedrive_path = os.path.expanduser('~/OneDrive - Aalto University')
+    else:
+        onedrive_path = False
+        print("Unsupported platform")
 
     subject_id = 0
     subject = ['joonas', 'pantelis', 'baran', 'victor']
@@ -23,7 +32,7 @@ def main():
     target_names = ['M1', 'V1', 'BROCA', 'DLPFC']
     columns_export = ['label', 'x_seed', 'y_seed', 'z_seed', 'is_target']
 
-    root_dir = os.environ.get('OneDrive') + r'\data\dti_navigation\normMRI'
+    root_dir = os.path.join(onedrive_path, 'data', 'dti_navigation', 'normMRI')
     data_dir = os.path.join(root_dir, subject[subject_id])
 
     filenames = {'MKSS': marker_file[subject[subject_id]],

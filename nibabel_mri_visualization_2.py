@@ -32,7 +32,7 @@ else:
     onedrive_path = False
     print("Unsupported platform")
 
-tms_system = 'nexstim'
+tms_system = 'magstimair'
 
 data_dir = os.path.join(onedrive_path, 'projects', 'nexstim', 'data', 'mri')
 filenames = 'GJ_2008_anonym_t1_mpr_ns_sag_1_1_1_mm_20081021180940_2'
@@ -267,7 +267,7 @@ for data_efield, data_mri, data_norm in zip(efield_slices, mri_slices, efield_no
 #fig.colorbar(im_ef, ax=ax)
 
 fig.tight_layout()
-#plt.show()
+# plt.show()
 
 plt.savefig(filepath_out_png, dpi=300, format='png', bbox_inches='tight')
 
